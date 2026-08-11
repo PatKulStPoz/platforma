@@ -2,6 +2,13 @@
 #include "driver.h"
 #include <vector>
 
+enum CmdDriver {
+    CMD_DRIVER_NONE = 0,
+    CMD_DRIVER_LEFT = 1,
+    CMD_DRIVER_RIGHT = 2,
+    CMD_DRIVER_BOTH = 3
+};
+
 class CommandTask {
     public:
     virtual ~CommandTask() {};
@@ -14,35 +21,105 @@ class CommandTask {
 };
 
 class SetLevelTask : public CommandTask {
+    CmdDriver driver;
     uint8_t level;
     public:
     SetLevelTask(uint8_t level) {
+        this->driver = CMD_DRIVER_BOTH;
+        this->level = level; 
+    }
+
+    SetLevelTask(CmdDriver driver, uint8_t level) {
+        this->driver = driver;
         this->level = level;
     }
     virtual void setup(Driver* left, Driver* right) {
-        left->setLevel(this->level);
-        right->setLevel(this->level);
+        if (this->driver & CMD_DRIVER_LEFT) left->setLevel(this->level);
+        if (this->driver & CMD_DRIVER_RIGHT) right->setLevel(this->level);
     }
 };
 
-
-class RotateTask : public CommandTask {
-    int degrees;
-    uint8_t level;
+class SetDirectionTask : public CommandTask {
+    CmdDriver driver;
+    DriverDirection direction;
     public:
-    RotateTask(int degrees, uint8_t level=0) {
-        this->degrees = degrees;
-        this->level = level;
+    SetDirectionTask(DriverDirection direction) {
+        this->driver = CMD_DRIVER_BOTH;
+        this->direction = direction; 
+    }
+
+    SetDirectionTask(CmdDriver driver, DriverDirection direction) {
+        this->driver = driver;
+        this->direction = direction; 
     }
     virtual void setup(Driver* left, Driver* right) {
-        left->rotateDeg(this->degrees);
-        right->rotateDeg(this->degrees);
-        if (this->level != 0) {
-            left->setLevel(this->level);
-            right->setLevel(this->level);
+        if (this->driver & CMD_DRIVER_LEFT) left->setDirection(this->direction);
+        if (this->driver & CMD_DRIVER_RIGHT) right->setDirection(this->direction);
+    }
+};
+
+class RotateTask : public CommandTask {
+    CmdDriver driver;
+    int degrees;
+    public:
+    RotateTask(int degrees) {
+        this->driver = CMD_DRIVER_BOTH;
+        this->degrees = degrees;
+    }
+    RotateTask(CmdDriver driver, int degrees) {
+        this->driver = driver;
+        this->degrees = degrees;
+    }
+
+    virtual void setup(Driver* left, Driver* right) {
+        if (this->driver & CMD_DRIVER_LEFT) {
+            left->rotateDeg(this->degrees);
+            left->start();
         }
-        left->start();
-        right->start();
+        if (this->driver & CMD_DRIVER_RIGHT) {
+            right->rotateDeg(this->degrees);
+            right->start();
+        }
+    }
+    
+    virtual bool update(Driver* left, Driver* right, int tick) {
+        return true;
+    }
+};
+
+class StartTask : public CommandTask {
+    CmdDriver driver;
+    public:
+    StartTask() {
+        this->driver = CMD_DRIVER_BOTH;
+    }
+    StartTask(CmdDriver driver) {
+        this->driver = driver;
+    }
+
+    virtual void setup(Driver* left, Driver* right) {
+        if (this->driver & CMD_DRIVER_LEFT) left->start();
+        if (this->driver & CMD_DRIVER_RIGHT) right->start();
+    }
+    
+    virtual bool update(Driver* left, Driver* right, int tick) {
+        return true;
+    }
+};
+
+class StopTask : public CommandTask {
+    CmdDriver driver;
+    public:
+    StopTask() {
+        this->driver = CMD_DRIVER_BOTH;
+    }
+    StopTask(CmdDriver driver) {
+        this->driver = driver;
+    }
+
+    virtual void setup(Driver* left, Driver* right) {
+        if (this->driver & CMD_DRIVER_LEFT) left->stop();
+        if (this->driver & CMD_DRIVER_RIGHT) right->stop();
     }
     
     virtual bool update(Driver* left, Driver* right, int tick) {
@@ -51,18 +128,25 @@ class RotateTask : public CommandTask {
 };
 
 class WaitForFinishedTask : public CommandTask {
+    CmdDriver driver;
     public:
     WaitForFinishedTask() {
+        this->driver = CMD_DRIVER_BOTH;
     }
-    
+
+    WaitForFinishedTask(CmdDriver driver) {
+        this->driver = driver;
+    }
+
     virtual bool update(Driver* left, Driver* right, int tick) {
-        return !left->isAutomatic() && !right->isAutomatic();
+        return (!(this->driver & CMD_DRIVER_LEFT) || !left->isAutomatic()) && (!(this->driver & CMD_DRIVER_RIGHT) || !right->isAutomatic());
     }
 };
 
 class WaitTicksTask : public CommandTask {
     int ticks;
     public:
+    // tick -> ~10ms
     WaitTicksTask(int ticks) {
         this->ticks = ticks;
     }

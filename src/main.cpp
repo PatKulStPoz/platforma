@@ -21,7 +21,7 @@ void app_main(void) {
     driver_prepare();
 
     Driver* left = new Driver(LEFT_DRIVER_PINS, 75, 9);
-    Driver* right = new Driver(RIGHT_DRIVER_PINS, 243, 1);
+    Driver* right = new Driver(RIGHT_DRIVER_PINS, 243, 9);
     left->setup();
     right->setup();
     printf("Waiting!\n");
@@ -30,42 +30,55 @@ void app_main(void) {
 
     int tickOld = 0;
     int lastHal = 0;
+    int tickOld2 = 0;
+    int lastHal2 = 0;
     vTaskDelay(3000 / portTICK_PERIOD_MS);
 
     std::queue<CommandTask*> tasks;
 
     tasks.push(new SetLevelTask(255));
     tasks.push(new RepeatTasks({
-        /*new WaitTicksTask(3 * 100),
-        new RotateTask(360 / 9),
+        /*new RotateTask(360 * 2),
         new WaitForFinishedTask(),
         new WaitTicksTask(3 * 100),
-        new RotateTask(360),
+        new RotateTask(CMD_DRIVER_LEFT, 360),
         new WaitForFinishedTask(),
         new WaitTicksTask(3 * 100),
-        new RotateTask(360 * 2),
+        new RotateTask(CMD_DRIVER_RIGHT, 360),
         new WaitForFinishedTask(),
-        new WaitTicksTask(3 * 100),
-        new RotateTask(360 / 3),
-        new WaitForFinishedTask(),*/
-        new RotateTask(360 * 2),
+        new WaitTicksTask(10 * 100),
+        new SetDirectionTask(DRIVER_BACKWARDS),
+        new RotateTask(120),
         new WaitForFinishedTask(),
-        new WaitTicksTask(3 * 100),
+        new SetDirectionTask(DRIVER_FORWARD),
+        new WaitTicksTask(3 * 100),*/
+
+        /*new StartTask(),
+        new WaitTicksTask(6 * 100),
+        new StopTask(),
+        new WaitTicksTask(4 * 100),
+        new SetDirectionTask(DRIVER_BACKWARDS),
+        new StartTask(),
+        new WaitTicksTask(6 * 100),
+        new StopTask(),
+        new WaitTicksTask(4 * 100),
+        new SetDirectionTask(DRIVER_FORWARD),*/
     }, 1000));
 
     tasks.push(new WaitTicksTask(4 * 100));
-    tasks.push(new RotateTask(180, 100));
+    tasks.push(new RotateTask(180));
     tasks.push(new WaitForFinishedTask());
 
     CommandTask* currentTask = NULL;
     int tick = 0;
+    int taskTick = 0;
     while (true) {
         vTaskDelay(10 / portTICK_PERIOD_MS);
 
         while(true) {
 
             if (currentTask == NULL && !tasks.empty()) {
-                tick = 0;
+                taskTick = 0;
                 currentTask = tasks.front();
                 tasks.pop();
                 currentTask->setup(left, right);
@@ -74,7 +87,7 @@ void app_main(void) {
                 break;
             }
 
-            if (currentTask != NULL && currentTask->update(left, right, tick)) {
+            if (currentTask != NULL && currentTask->update(left, right, taskTick)) {
                 delete currentTask;
                 currentTask = NULL;
                 printf("Task Finished!\n");
@@ -83,16 +96,25 @@ void app_main(void) {
             }
         }
 
+        // Aktualizują stan sterownika
         left->update();
         right->update();
 
+
         int newHal = left->getHalTicks();
         if (newHal != lastHal) {
-            printf("Hal: %d, Driver: %d, Time: %d0 ms\n", newHal, left->getDriverTicksPerHal(), tick - tickOld);
+            printf("Left> Hal: %d, Driver: %d, Time: %d0 ms\n", newHal, left->getDriverTicksPerHal(), taskTick - tickOld);
             lastHal = newHal;
             tickOld = tick;
         }
+        newHal = right->getHalTicks();
+        if (newHal != lastHal2) {
+            printf("Right> Hal: %d, Driver: %d, Time: %d0 ms\n", newHal, right->getDriverTicksPerHal(), taskTick - tickOld2);
+            lastHal2 = newHal;
+            tickOld2 = tick;
+        }
         tick++;
+        taskTick++;
     }
 }
 
