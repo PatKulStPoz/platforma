@@ -4,18 +4,7 @@
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 
-
-ledc_timer_config_t ledc_timer = {
-    .speed_mode       = LEDC_HIGH_SPEED_MODE ,
-    .duty_resolution  = LEDC_TIMER_13_BIT,
-    .timer_num        = LEDC_TIMER_0,
-    .freq_hz          = 6000,  // Set output frequency at 4 kHz
-    .clk_cfg          = LEDC_AUTO_CLK,
-    .deconfigure = false,
-};
-
 extern void driver_prepare() {
-    ledc_timer_config(&ledc_timer);
 }
 
 extern void intrDriverIn(void* args);
@@ -34,10 +23,23 @@ class Driver {
     int halTicks = 0;
 
     uint8_t value = 0;
+    uint8_t currentVal = 0;
+    uint8_t targetVal = 0;
 
     dac_oneshot_handle_t dacHandle;
 
     bool automatic = false;
+
+    void setLevelNoUpdate(uint8_t value) {
+        this->targetVal = value << 2;
+    }
+
+    void updateAutomatic() {
+        if (this->automatic && this->rotationTick-- <= 0) {
+            setLevelNoUpdate(0);
+            this->automatic = false;
+        }
+    }
 
     public:
     Driver(DriverConfig config, int driverTicksFullRotation, int halTicksPerFullRotation) {
@@ -112,32 +114,43 @@ class Driver {
 
     }
 
-    void updateAutomatic() {
-        if (this->automatic && this->rotationTick-- <= 0) {
-            setLevel(0);
-            this->automatic = false;
-        }
-    }
-
     void rotateDeg(int deg) {
-        gpio_intr_disable(this->config.driver_in);
+        if (this->config.hal_move_in == GPIO_NUM_NC) {
+            return;
+        } 
+
+        gpio_intr_disable(this->config.hal_move_in);
 
         this->rotationTick = (deg - 1) * this->halTicksFullRotation / 360;
         this->automatic = true;
 
-        printf("Set: %d\n", this->rotationTick);
+        printf("Rotate %d deg (%d) hal ticks\n", deg, this->rotationTick);
 
-        gpio_intr_enable(this->config.driver_in);
+        gpio_intr_enable(this->config.hal_move_in);
     }
 
     void setLevel(uint8_t value) {
         if (this->value != value) {
-            dac_oneshot_output_voltage(this->dacHandle, value);
             this->value = value;
         }
     }
 
+    void start() {
+        this->setLevelNoUpdate(this->value);
+    }
+
+    void stop() {
+        this->setLevelNoUpdate(0);
+    }
+
     void update() {
+        if (this->currentVal < this->targetVal) {
+            dac_oneshot_output_voltage(this->dacHandle, (++this->currentVal) >> 2);
+        } else if (this->currentVal > this->targetVal) {
+            this->currentVal = this->targetVal;
+            dac_oneshot_output_voltage(this->dacHandle, this->currentVal >> 2);
+        }
+
         //printf("Current: %d\n", this->driverTicks);
     }
 
