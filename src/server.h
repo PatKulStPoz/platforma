@@ -21,14 +21,20 @@ static httpd_handle_t server = nullptr;
 static int ws_fd = -1;
 
 //lewe kolo
-static int l_PWM_counter = 0;
-static int l_hall_counter = 0;
-static bool l_state = true;
+static int l_driverTicksFullRotation = 0;
+static int l_halTicksFullRotation = 0;
+static int l_driverTicks = 0;
+static int l_rotationTick = 0;
+static int l_driverTicksPerHal = 0;
+static int l_halTicks = 0;
 
 //prawe kolo
-static int r_PWM_counter = 0;
-static int r_hall_counter = 0;
-static bool r_state = true;
+static int r_driverTicksFullRotation = 0;
+static int r_halTicksFullRotation = 0;
+static int r_driverTicks = 0;
+static int r_rotationTick = 0;
+static int r_driverTicksPerHal = 0;
+static int r_halTicks = 0;
 
 //root handler
 static esp_err_t root_get_handler(httpd_req_t *req)
@@ -44,18 +50,18 @@ static esp_err_t root_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-
+//websocket handler
 static esp_err_t websocket_handler(httpd_req_t *req)
 {
-    ESP_LOGI(TAG, "=== websocket_handler ===");
-    ESP_LOGI(TAG, "method = %d", req->method);
-    ESP_LOGI(TAG, "HTTP_GET = %d", HTTP_GET);
+    //ESP_LOGI(TAG, "=== websocket_handler ===");
+    //ESP_LOGI(TAG, "method = %d", req->method);
+    //ESP_LOGI(TAG, "HTTP_GET = %d", HTTP_GET);
     ws_fd = httpd_req_to_sockfd(req);
     
     ESP_LOGI(TAG, "fd = %d", ws_fd);
 
 
-    ESP_LOGI(TAG, "=== WEBSOCKET FRAME ===");
+    //ESP_LOGI(TAG, "=== WEBSOCKET FRAME ===");
 
     httpd_ws_frame_t ws_pkt = {};
     
@@ -105,25 +111,37 @@ static void websocket_send_data()
         return;
     }
 
-    char response[256];
+    char response[512];
 
     snprintf(
             response,
             sizeof(response),
             R"rawliteral({
-                "l_PWM_counter": %d,
-                "l_hall_counter": %d,
-                "l_state": %s,
-                "r_PWM_counter": %d,
-                "r_hall_counter": %d,
-                "r_state": %s
+                "l_driverTicksFullRotation": %d,
+                "l_halTicksFullRotation": %d,
+                "l_driverTicks": %d,
+                "l_rotationTick": %d,
+                "l_driverTicksPerHal": %d,
+                "l_halTicks": %d,
+                "r_driverTicksFullRotation": %d,
+                "r_halTicksFullRotation": %d,
+                "r_driverTicks": %d,
+                "r_rotationTick": %d,
+                "r_driverTicksPerHal": %d,
+                "r_halTicks": %d
             })rawliteral",
-            l_PWM_counter,
-            l_hall_counter,
-            l_state ? "true" : "false",
-            r_PWM_counter,
-            r_hall_counter,
-            r_state ? "true" : "false"
+            l_driverTicksFullRotation,
+            l_halTicksFullRotation,
+            l_driverTicks,
+            l_rotationTick,
+            l_driverTicksPerHal,
+            l_halTicks,
+            r_driverTicksFullRotation,
+            r_halTicksFullRotation,
+            r_driverTicks,
+            r_rotationTick,
+            r_driverTicksPerHal,
+            r_halTicks
         );
 
     httpd_ws_frame_t ws_pkt = {};
