@@ -1,0 +1,96 @@
+html {
+    background-color: bisque;
+}
+
+.box {
+    background-color: white;
+    padding: 1px 5px;
+}
+
+#header {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    align-content: center;
+    flex-wrap: wrap;
+    flex-direction: row;
+}
+
+#header > #title {
+    font-size: 2.5em;
+}
+
+#header > #websocket {
+    font-size: 1.2em;
+}
+
+#terminal_send {
+    margin-top: 5px;
+    display: flex;
+}
+
+#terminal_input {
+    flex-grow: 100;
+    margin-right: 5px;
+}
+
+.drive_item {
+    width: auto;
+    margin-bottom: 10px;
+    width: 100%;
+    display: flex;
+}
+
+.animated_wheel {
+  height: 64px;
+  width: 64px;
+  background: #ffffff;
+  background: linear-gradient(#000000, #888);
+  border-radius: 100%;
+  transition: transform 1000ms linear;
+  transform: rotate(0deg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 5px;
+}
+
+.animated_wheel > .point {
+  height: 12px;
+  width: 12px;
+  display: block;
+  position: absolute;
+  background: red;
+  border-radius: 100%;
+  transform: translate(26px, 0px);
+}
+
+.animated_wheel > .point:nth-child(1) {
+  background: green;
+  transform: translate(-26px, 0px);
+}
+
+.animated_wheel > .point:nth-child(2) {
+  background: blue;
+  transform: translate(0, -26px);
+}
+
+.animated_wheel > .point:nth-child(3) {
+  background: yellow;
+  transform: translate(0, 26px);
+}
+
+
+#terminal {
+    display: block;
+}
+
+#center_holder {    
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+
+}
