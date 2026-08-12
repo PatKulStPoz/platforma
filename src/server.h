@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdint.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
@@ -10,8 +11,9 @@
 #include "lwip/sys.h"
 #include "esp_log.h"
 
-#include "page.h"
 #include "hotspot.h"
+#include "page.h"
+
 
 static httpd_handle_t server = nullptr;
 
@@ -28,7 +30,7 @@ static int r_PWM_counter = 0;
 static int r_hall_counter = 0;
 static bool r_state = true;
 
-// HTTP GET: /
+//root handler
 static esp_err_t root_get_handler(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "text/html; charset=UTF-8");
