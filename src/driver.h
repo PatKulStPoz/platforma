@@ -175,8 +175,25 @@ class Driver {
         return this->driverTicksPerHal;
     }
 
+    //gety
     int getHalTicks() {
         return this->halTicks;
+    }
+
+    int getDriverTicks() {
+        return this->driverTicks;
+    }
+
+    int getRotationTick() {
+        return this->rotationTick;
+    }
+
+    int getDriverTicksFullRotation() {
+        return this->driverTicksFullRotation;
+    }
+
+    int getHalTicksFullRotation() {
+        return this->halTicksFullRotation;
     }
 
     bool isAutomatic() {
