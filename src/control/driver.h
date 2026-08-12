@@ -58,15 +58,15 @@ class Driver {
     // Konfiguruje gpio i funkcjonalność użytą przez silnik / driver
     void setup() {
         gpio_input_enable(this->config.driver_in);
-        gpio_input_enable(this->config.hal_move_in);
+        gpio_input_enable(this->config.hall_main_in);
         
         gpio_set_intr_type(this->config.driver_in, GPIO_INTR_POSEDGE);
         gpio_isr_handler_add(this->config.driver_in, intrDriverIn, this);
         gpio_intr_enable(this->config.driver_in);
 
-        gpio_set_intr_type(this->config.hal_move_in, GPIO_INTR_POSEDGE);
-        gpio_isr_handler_add(this->config.hal_move_in, intrHalIn, this);
-        gpio_intr_enable(this->config.hal_move_in);
+        gpio_set_intr_type(this->config.hall_main_in, GPIO_INTR_POSEDGE);
+        gpio_isr_handler_add(this->config.hall_main_in, intrHalIn, this);
+        gpio_intr_enable(this->config.hall_main_in);
 
 
         gpio_output_enable(this->config.direction_out);
@@ -84,10 +84,12 @@ class Driver {
         gpio_reset_pin(this->config.brakes_out);
         gpio_reset_pin(this->config.direction_out);
         gpio_reset_pin(this->config.driver_in);
-        gpio_reset_pin(this->config.hal_move_in);
+        gpio_reset_pin(this->config.hall_main_in);
 
         gpio_isr_handler_remove(this->config.driver_in);
-        gpio_isr_handler_remove(this->config.hal_move_in);
+        gpio_isr_handler_remove(this->config.hall_main_in);
+        gpio_isr_handler_remove(this->config.hall_left_in);
+        gpio_isr_handler_remove(this->config.hall_right_in);
 
         dac_oneshot_del_channel(this->dacHandle);
         this->dacHandle = NULL;
@@ -114,18 +116,18 @@ class Driver {
 
     // Obraca o "deg" stopni
     void rotateDeg(int deg) {
-        if (this->config.hal_move_in == GPIO_NUM_NC) {
+        if (this->config.hall_main_in == GPIO_NUM_NC) {
             return;
         } 
 
-        gpio_intr_disable(this->config.hal_move_in);
+        gpio_intr_disable(this->config.hall_main_in);
 
         this->rotationTick = (deg - 1) * this->halTicksFullRotation / 360;
         this->automatic = true;
 
         printf("Rotate %d deg (%d) hal ticks\n", deg, this->rotationTick);
 
-        gpio_intr_enable(this->config.hal_move_in);
+        gpio_intr_enable(this->config.hall_main_in);
     }
 
 
