@@ -10,7 +10,7 @@
 #include "../control/driver.h"
 #include "../control/command.h"
 #include <queue>
-//#include "mdns.h"
+#include "mdns.h"
 
 struct DriverPair {
     Driver* left;
@@ -98,14 +98,14 @@ void web_setup(Driver* left, Driver* right) {
         );
     }
 
-    /*ESP_ERROR_CHECK(mdns_init());
+    ESP_ERROR_CHECK(mdns_init());
     //set mDNS hostname (required if you want to advertise services)
-    ESP_ERROR_CHECK(mdns_hostname_set(ESP_MDNS_NAME));
-    ESP_LOGI(TAG, "mdns hostname set to: [%s]", hostname);
+    ESP_ERROR_CHECK(mdns_hostname_set(ESP_MDNS_HOSTNAME));
+    ESP_LOGI(TAG, "mdns hostname set to: [%s]", ESP_MDNS_HOSTNAME);
     //set default mDNS instance name
     ESP_ERROR_CHECK(mdns_instance_name_set(ESP_MDNS_NAME));
 
-    mdns_service_add("ESP32-WebServer", "_http", "_tcp", 80, NULL, 3);*/
+    mdns_service_add("ESP32-WebServer", "_http", "_tcp", 80, NULL, 0);
 
     auto* drivers = new DriverPair{left, right};
 

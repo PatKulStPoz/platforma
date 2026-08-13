@@ -8,11 +8,20 @@ extern void driver_prepare() {
 }
 
 extern void intrDriverIn(void* args);
-extern void intrHalIn(void* args);
+extern void intrHallBack(void* args);
+extern void intrHallMain(void* args);
+extern void intrHallFront(void* args);
 
 enum DriverDirection {
     DRIVER_FORWARD = 1,
     DRIVER_BACKWARDS = -1
+};
+
+enum HallId {
+    HALL_BACK = 2,
+    HALL_MAIN = 1,
+    HALL_FRONT = 0,
+    HALL_NONE = -1
 };
 
 class Driver {
@@ -33,6 +42,9 @@ class Driver {
     uint16_t targetVal = 0;
 
     dac_oneshot_handle_t dacHandle;
+
+    uint8_t hallOrderId = 0;
+    HallId hallOrder[3] = {HALL_NONE, HALL_NONE, HALL_NONE};
 
     bool automatic = false;
 
@@ -65,8 +77,16 @@ class Driver {
         gpio_intr_enable(this->config.driver_in);
 
         gpio_set_intr_type(this->config.hall_main_in, GPIO_INTR_POSEDGE);
-        gpio_isr_handler_add(this->config.hall_main_in, intrHalIn, this);
+        gpio_isr_handler_add(this->config.hall_main_in, intrHallMain, this);
         gpio_intr_enable(this->config.hall_main_in);
+
+        gpio_set_intr_type(this->config.hall_back_in, GPIO_INTR_POSEDGE);
+        gpio_isr_handler_add(this->config.hall_back_in, intrHallBack, this);
+        gpio_intr_enable(this->config.hall_back_in);
+
+        gpio_set_intr_type(this->config.hall_front_in, GPIO_INTR_POSEDGE);
+        gpio_isr_handler_add(this->config.hall_front_in, intrHallFront, this);
+        gpio_intr_enable(this->config.hall_front_in);
 
 
         gpio_output_enable(this->config.direction_out);
@@ -88,8 +108,8 @@ class Driver {
 
         gpio_isr_handler_remove(this->config.driver_in);
         gpio_isr_handler_remove(this->config.hall_main_in);
-        gpio_isr_handler_remove(this->config.hall_left_in);
-        gpio_isr_handler_remove(this->config.hall_right_in);
+        gpio_isr_handler_remove(this->config.hall_back_in);
+        gpio_isr_handler_remove(this->config.hall_front_in);
 
         dac_oneshot_del_channel(this->dacHandle);
         this->dacHandle = NULL;
@@ -106,12 +126,23 @@ class Driver {
     }
 
     // Obsługa przerwania od czujnika halla
-    void handleHalIn() {
+    void handleHallMain() {
         this->halTicks++;
         this->driverTicksPerHal = this->driverTicksSec;
         this->driverTicksSec = 0;
         this->updateAutomatic();
+        this->hallOrder[ this->hallOrderId++ ] = HALL_MAIN;
+        if (this->hallOrderId >= 3) this->hallOrderId = 0;
+    }
 
+    void handleHallFront() {
+        this->hallOrder[ this->hallOrderId++ ] = HALL_FRONT;
+        if (this->hallOrderId >= 3) this->hallOrderId = 0;
+    }
+
+    void handleHallBack() {
+        this->hallOrder[ this->hallOrderId++ ] = HALL_BACK;
+        if (this->hallOrderId >= 3) this->hallOrderId = 0;
     }
 
     // Obraca o "deg" stopni
@@ -119,7 +150,6 @@ class Driver {
         if (this->config.hall_main_in == GPIO_NUM_NC) {
             return;
         } 
-
         gpio_intr_disable(this->config.hall_main_in);
 
         this->rotationTick = (deg - 1) * this->halTicksFullRotation / 360;
@@ -198,6 +228,14 @@ class Driver {
         return this->halTicksFullRotation;
     }
 
+    HallId getFirstHall() {
+        return this->hallOrder[0];
+    }
+
+    HallId getLastHall() {
+        return this->hallOrder[2];
+    }
+
     bool isAutomatic() {
         return this->automatic;
     }
@@ -215,6 +253,14 @@ void intrDriverIn(void* args) {
     static_cast<Driver*>(args)->handleDriverIn();
 }
 
-void intrHalIn(void* args) {
-    static_cast<Driver*>(args)->handleHalIn();
+void intrHallMain(void* args) {
+    static_cast<Driver*>(args)->handleHallMain();
+}
+
+void intrHallBack(void* args) {
+    static_cast<Driver*>(args)->handleHallBack();
+}
+
+void intrHallFront(void* args) {
+    static_cast<Driver*>(args)->handleHallFront();
 }

@@ -63,9 +63,9 @@ extern "C" void app_main(void) {
         new SetDirectionTask(DRIVER_FORWARD),*/
     }, 1000));
 
-    tasks.push(new WaitTicksTask(4 * 100));
-    tasks.push(new RotateTask(180));
-    tasks.push(new WaitForFinishedTask());
+    //tasks.push(new WaitTicksTask(4 * 100));
+    //tasks.push(new RotateTask(180));
+     //tasks.push(new WaitForFinishedTask());
 
     CommandTask* currentTask = NULL;
     int tick = 0;
@@ -101,13 +101,13 @@ extern "C" void app_main(void) {
 
         int newHal = left->getHalTicks();
         if (newHal != lastHal) {
-            printf("Left> Hal: %d, Driver: %d, Time: %d0 ms\n", newHal, left->getDriverTicksPerHal(), taskTick - tickOld);
+            printf("Left> Hal: %d, Driver: %d, Time: %d0 ms, First: %d, Last: %d\n", newHal, left->getDriverTicksPerHal(), taskTick - tickOld, left->getFirstHall(), left->getLastHall());
             lastHal = newHal;
             tickOld = tick;
         }
         newHal = right->getHalTicks();
         if (newHal != lastHal2) {
-            printf("Right> Hal: %d, Driver: %d, Time: %d0 ms\n", newHal, right->getDriverTicksPerHal(), taskTick - tickOld2);
+            printf("Right> Hal: %d, Driver: %d, Time: %d0 ms, First: %d, Last: %d\n", newHal, right->getDriverTicksPerHal(), taskTick - tickOld2, right->getFirstHall(), right->getLastHall());
             lastHal2 = newHal;
             tickOld2 = tick;
         }

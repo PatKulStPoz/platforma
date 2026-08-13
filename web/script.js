@@ -1,5 +1,4 @@
-
-import * as xterm from 'https://esm.sh/@xterm/xterm/lib/xterm.js';
+//import * as xterm from '/xterm/xterm.mjs';
 
 let socket = new WebSocket("ws://" + window.location.host + "/ws");
 const statusElement = document.getElementById("ws-status");
@@ -23,25 +22,25 @@ setInterval(() => {
     updateState(right);
 }, 500)
 
-const term = new xterm.Terminal();
-term.open(document.getElementById('terminal'));
+//const term = new xterm.Terminal();
+//term.open(document.getElementById('terminal'));
 
 function log(...data) {
     console.log(data);
-    for (const i of data) {
+    /*for (const i of data) {
         term.write(i.toString());
         term.write("\n\r");
-    }
+    }*/
 }
 
 function error(...data) {
     console.error(data);
-    term.write("\x1B[1;3;31m");
+    /*term.write("\x1B[1;3;31m");
     for (const i of data) {
         term.write(i.toString());
         term.write("\n\r");
     }
-    term.write("\x1B[0m");
+    term.write("\x1B[0m");*/
 }
 
 socket.onopen = function () {
@@ -66,20 +65,20 @@ socket.onclose = function () {
 
 socket.onmessage = function (event) {
     const data = JSON.parse(event.data);
-    if (data.__type == "update_state");
+    if (data["__type"] == "update_state") {
+        for (const property in data) {
+            if (property.startsWith("_")) continue;
+            
+            const doc = document.getElementById(`state:${property}`);
+            if (doc) {
+                doc.textContent = data[property];
+            }
 
-    for (const property in object) {
-        if (property.startsWith("_")) continue;
-        
-        const doc = document.getElementById(`state:${property}`);
-        if (doc) {
-            doc.textContent = object[property];
-        }
-
-        if (property.startsWith("l_")) {
-            left[property.substring(2)] = object[property];
-        } else if (property.startsWith("r_")) {
-            right[property.substring(2)] = object[property];
+            if (property.startsWith("l_")) {
+                left[property.substring(2)] = data[property];
+            } else if (property.startsWith("r_")) {
+                right[property.substring(2)] = data[property];
+            }
         }
     }
 };

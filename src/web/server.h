@@ -36,19 +36,6 @@ static int r_rotationTick = 0;
 static int r_driverTicksPerHal = 0;
 static int r_halTicks = 0;
 
-//root handler
-static esp_err_t root_get_handler(httpd_req_t *req)
-{
-    httpd_resp_set_type(req, "text/html; charset=UTF-8");
-
-    httpd_resp_send(
-        req,
-        html_page,
-        HTTPD_RESP_USE_STRLEN
-    );
-
-    return ESP_OK;
-}
 
 //websocket handler
 static esp_err_t websocket_handler(httpd_req_t *req)
@@ -111,12 +98,13 @@ static void websocket_send_data()
         return;
     }
 
-    char response[512];
+    char response[1024];
 
     snprintf(
             response,
             sizeof(response),
             R"rawliteral({
+                "__type": "update_state",
                 "l_driverTicksFullRotation": %d,
                 "l_halTicksFullRotation": %d,
                 "l_driverTicks": %d,
@@ -151,6 +139,8 @@ static void websocket_send_data()
         reinterpret_cast<uint8_t *>(response);
     ws_pkt.len = strlen(response);
 
+    printf("Send WebSocket\n");
+
     esp_err_t ret =
         httpd_ws_send_frame_async(
             server,
@@ -182,11 +172,14 @@ static httpd_handle_t start_web_server(void)
             "HTTP server started on port %d",
             config.server_port
         );
+        
+        init_pages(server);
+
         httpd_uri_t uri_root = {};
 
         uri_root.uri = "/";
         uri_root.method = HTTP_GET;
-        uri_root.handler = root_get_handler;
+        uri_root.handler = page_get_file_page_html_handler;
         uri_root.user_ctx = nullptr;
 
         ESP_ERROR_CHECK(

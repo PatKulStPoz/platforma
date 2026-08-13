@@ -9,13 +9,13 @@ typedef struct {
     gpio_num_t direction_out;
     gpio_num_t brakes_out;
     gpio_num_t driver_in;
-    gpio_num_t hall_left_in;
+    gpio_num_t hall_back_in;
     gpio_num_t hall_main_in;
-    gpio_num_t hall_right_in;
+    gpio_num_t hall_front_in;
 } DriverConfig;
 
 
 // DAC_CHAN_0 = Pin 25
 // DAC_CHAN_1 = Pin 26
-DriverConfig LEFT_DRIVER_PINS = {DAC_CHAN_0, GPIO_NUM_19, GPIO_NUM_NC, GPIO_NUM_18, GPIO_NUM_NC, GPIO_NUM_33, GPIO_NUM_NC };
-DriverConfig RIGHT_DRIVER_PINS = {DAC_CHAN_1, GPIO_NUM_5, GPIO_NUM_NC, GPIO_NUM_22, GPIO_NUM_NC, GPIO_NUM_23, GPIO_NUM_NC };
+DriverConfig LEFT_DRIVER_PINS = {DAC_CHAN_0, GPIO_NUM_19, GPIO_NUM_NC, GPIO_NUM_18, GPIO_NUM_16, GPIO_NUM_33, GPIO_NUM_17 };
+DriverConfig RIGHT_DRIVER_PINS = {DAC_CHAN_1, GPIO_NUM_5, GPIO_NUM_NC, GPIO_NUM_22, GPIO_NUM_12, GPIO_NUM_23, GPIO_NUM_14 };
