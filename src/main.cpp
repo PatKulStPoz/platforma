@@ -33,39 +33,10 @@ extern "C" void app_main(void) {
     vTaskDelay(3000 / portTICK_PERIOD_MS);
 
     std::queue<CommandTask*> tasks;
+    //tasks.push(new SetDirectionTask(DRIVER_BACKWARDS));
+    //tasks.push(new SetLevelTask(100));
+    //tasks.push(new StartTask());
 
-    tasks.push(new SetLevelTask(255));
-    tasks.push(new RepeatTasks({
-        /*new RotateTask(360 * 2),
-        new WaitForFinishedTask(),
-        new WaitTicksTask(3 * 100),
-        new RotateTask(CMD_DRIVER_LEFT, 360),
-        new WaitForFinishedTask(),
-        new WaitTicksTask(3 * 100),
-        new RotateTask(CMD_DRIVER_RIGHT, 360),
-        new WaitForFinishedTask(),
-        new WaitTicksTask(10 * 100),
-        new SetDirectionTask(DRIVER_BACKWARDS),
-        new RotateTask(120),
-        new WaitForFinishedTask(),
-        new SetDirectionTask(DRIVER_FORWARD),
-        new WaitTicksTask(3 * 100),*/
-
-        new StartTask(),
-        new WaitTicksTask(6 * 100),
-        new StopTask(),
-        new WaitTicksTask(4 * 100),
-        /*new SetDirectionTask(DRIVER_BACKWARDS),
-        new StartTask(),
-        new WaitTicksTask(6 * 100),
-        new StopTask(),
-        new WaitTicksTask(4 * 100),
-        new SetDirectionTask(DRIVER_FORWARD),*/
-    }, 1000));
-
-    //tasks.push(new WaitTicksTask(4 * 100));
-    //tasks.push(new RotateTask(180));
-     //tasks.push(new WaitForFinishedTask());
 
     CommandTask* currentTask = NULL;
     int tick = 0;
@@ -98,16 +69,20 @@ extern "C" void app_main(void) {
         left->update();
         right->update();
 
+        //if (tick % 10 == 0) {
+        //    printf("Left> Hal: %d, Driver: %d, Time: %d0 ms, Last: %d, Dir: %d | %d, Intr %d\n", left->getHalTicks(), left->getDriverTicksPerHal(), taskTick - tickOld, 
+        //   left->getLastHall(), left->getHallDirection(), left->getIntrCount());
+        //}
 
         int newHal = left->getHalTicks();
         if (newHal != lastHal) {
-            printf("Left> Hal: %d, Driver: %d, Time: %d0 ms, First: %d, Last: %d\n", newHal, left->getDriverTicksPerHal(), taskTick - tickOld, left->getFirstHall(), left->getLastHall());
+            printf("Left> Hal: %d, Driver: %d, Time: %d0 ms, Last: %d, Dir: %d\n", newHal, left->getDriverTicksPerHal(), taskTick - tickOld, left->getLastHall(), left->getHallDirection());
             lastHal = newHal;
             tickOld = tick;
         }
         newHal = right->getHalTicks();
         if (newHal != lastHal2) {
-            printf("Right> Hal: %d, Driver: %d, Time: %d0 ms, First: %d, Last: %d\n", newHal, right->getDriverTicksPerHal(), taskTick - tickOld2, right->getFirstHall(), right->getLastHall());
+            printf("Right> Hal: %d, Driver: %d, Time: %d0 ms, Last: %d, Dir: %d\n", newHal, right->getDriverTicksPerHal(), taskTick - tickOld2, right->getLastHall(), right->getHallDirection());
             lastHal2 = newHal;
             tickOld2 = tick;
         }

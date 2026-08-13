@@ -18,9 +18,9 @@ enum DriverDirection {
 };
 
 enum HallId {
-    HALL_BACK = 2,
-    HALL_MAIN = 1,
     HALL_FRONT = 0,
+    HALL_MAIN = 1,
+    HALL_BACK = 2,
     HALL_NONE = -1
 };
 
@@ -36,6 +36,7 @@ class Driver {
     int driverTicksPerHal = 0;
     int halTicks = 0;
     DriverDirection direction = DRIVER_FORWARD;
+    int intrCount = 0;
 
     uint8_t value = 0;
     uint16_t currentVal = 0;
@@ -43,8 +44,9 @@ class Driver {
 
     dac_oneshot_handle_t dacHandle;
 
-    uint8_t hallOrderId = 0;
-    HallId hallOrder[3] = {HALL_NONE, HALL_NONE, HALL_NONE};
+    HallId lastHall = HALL_NONE;
+    HallId hallDirection = HALL_NONE;
+    HallId previousHallDirection = HALL_NONE;
 
     bool automatic = false;
 
@@ -76,15 +78,15 @@ class Driver {
         gpio_isr_handler_add(this->config.driver_in, intrDriverIn, this);
         gpio_intr_enable(this->config.driver_in);
 
-        gpio_set_intr_type(this->config.hall_main_in, GPIO_INTR_POSEDGE);
+        gpio_set_intr_type(this->config.hall_main_in, GPIO_INTR_NEGEDGE);
         gpio_isr_handler_add(this->config.hall_main_in, intrHallMain, this);
         gpio_intr_enable(this->config.hall_main_in);
 
-        gpio_set_intr_type(this->config.hall_back_in, GPIO_INTR_POSEDGE);
+        gpio_set_intr_type(this->config.hall_back_in, GPIO_INTR_NEGEDGE);
         gpio_isr_handler_add(this->config.hall_back_in, intrHallBack, this);
         gpio_intr_enable(this->config.hall_back_in);
 
-        gpio_set_intr_type(this->config.hall_front_in, GPIO_INTR_POSEDGE);
+        gpio_set_intr_type(this->config.hall_front_in, GPIO_INTR_NEGEDGE);
         gpio_isr_handler_add(this->config.hall_front_in, intrHallFront, this);
         gpio_intr_enable(this->config.hall_front_in);
 
@@ -127,22 +129,28 @@ class Driver {
 
     // Obsługa przerwania od czujnika halla
     void handleHallMain() {
+        this->intrCount++;
         this->halTicks++;
         this->driverTicksPerHal = this->driverTicksSec;
         this->driverTicksSec = 0;
         this->updateAutomatic();
-        this->hallOrder[ this->hallOrderId++ ] = HALL_MAIN;
-        if (this->hallOrderId >= 3) this->hallOrderId = 0;
+        if (this->lastHall == HALL_BACK) {
+            this->hallDirection = HALL_FRONT;
+        } else if (this->lastHall == HALL_FRONT) {
+            this->hallDirection = HALL_BACK;
+        } 
+
+        this->lastHall = HALL_MAIN;
     }
 
     void handleHallFront() {
-        this->hallOrder[ this->hallOrderId++ ] = HALL_FRONT;
-        if (this->hallOrderId >= 3) this->hallOrderId = 0;
+        this->intrCount++;
+        this->lastHall = HALL_FRONT;
     }
 
     void handleHallBack() {
-        this->hallOrder[ this->hallOrderId++ ] = HALL_BACK;
-        if (this->hallOrderId >= 3) this->hallOrderId = 0;
+        this->intrCount++;
+        this->lastHall = HALL_BACK;
     }
 
     // Obraca o "deg" stopni
@@ -228,13 +236,18 @@ class Driver {
         return this->halTicksFullRotation;
     }
 
-    HallId getFirstHall() {
-        return this->hallOrder[0];
+    int getIntrCount() {
+        return this->intrCount;
     }
 
     HallId getLastHall() {
-        return this->hallOrder[2];
+        return this->lastHall;
     }
+
+    HallId getHallDirection() {
+        return this->hallDirection;
+    }
+
 
     bool isAutomatic() {
         return this->automatic;
