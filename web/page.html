@@ -32,6 +32,7 @@
                     <div class="point"></div>
                     <div class="point"></div>
                 </div>
+                <canvas id="left_chart" width="200" height="100"></canvas>
             </div>
             <div id="right_drive" class="drive_item box">
                 <div class="info">
@@ -49,16 +50,18 @@
                     <div class="point"></div>
                     <div class="point"></div>
                 </div>
+                <canvas id="right_chart" width="200" height="100"></canvas>
             </div>
         </div>
         <div>
-            <div id="terminal"></div>
+            <div id="terminal_window"><div id="terminal"></div></div>
             <div id="terminal_send">
                 <input type="text" id="terminal_input" name="command" />
                 <button id="terminal_button">Wyślij</button>
             </div>
         </div>
     </div>
+    <script src="/lib/chart.js"></script>
 
     <script src="/script.js" type="module"></script>
 

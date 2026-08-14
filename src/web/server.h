@@ -10,12 +10,15 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 #include "esp_log.h"
-
+#include <string>
 #include "hotspot.h"
 #include "page.h"
-
+#include "../state.h"
+#include "../control/command.h"
 
 static httpd_handle_t server = nullptr;
+
+static DriverState* static_driverState = NULL;
 
 //websocket klienta
 static int ws_fd = -1;
@@ -36,6 +39,52 @@ static int r_rotationTick = 0;
 static int r_driverTicksPerHal = 0;
 static int r_halTicks = 0;
 
+static void websocket_send_data(char* response) {
+    if (ws_fd < 0)
+    {
+        return;
+    }
+    
+    httpd_ws_frame_t ws_pkt = {};
+
+    ws_pkt.type = HTTPD_WS_TYPE_TEXT;
+    ws_pkt.payload = reinterpret_cast<uint8_t *>(response);
+    ws_pkt.len = strlen(response);
+
+    esp_err_t ret =
+        httpd_ws_send_frame_async(
+            server,
+            ws_fd,
+            &ws_pkt
+        );
+
+    if (ret != ESP_OK)
+    {
+        ESP_LOGW(
+            TAG,
+            "WebSocket send failed: %s",
+            esp_err_to_name(ret)
+        );
+
+        ws_fd = -1;
+    }
+}
+
+void websocket_print(std::string text) {
+    char response[1024];
+
+    snprintf(
+            response,
+            sizeof(response),
+            R"rawliteral({
+                "__type": "print",
+                "text": %s
+            })rawliteral",
+            text.c_str()
+        );
+
+    websocket_send_data(response);
+}
 
 //websocket handler
 static esp_err_t websocket_handler(httpd_req_t *req)
@@ -84,6 +133,12 @@ static esp_err_t websocket_handler(httpd_req_t *req)
                      reinterpret_cast<char *>(buf));
         }
 
+        std::string str = reinterpret_cast<char *>(buf);
+
+        if (str.starts_with("EXEC>")) {
+            parseAndExecuteMulti(static_driverState, websocket_print, str.substr(5));
+        }
+
         delete[] buf;
     }
 
@@ -91,10 +146,8 @@ static esp_err_t websocket_handler(httpd_req_t *req)
 }
 
 //wysylanie danych za pomoza websocket
-static void websocket_send_data()
-{
-    if (ws_fd < 0)
-    {
+static void websocket_send_update_data() {
+    if (ws_fd < 0) {
         return;
     }
 
@@ -132,38 +185,14 @@ static void websocket_send_data()
             r_halTicks
         );
 
-    httpd_ws_frame_t ws_pkt = {};
-
-    ws_pkt.type = HTTPD_WS_TYPE_TEXT;
-    ws_pkt.payload =
-        reinterpret_cast<uint8_t *>(response);
-    ws_pkt.len = strlen(response);
-
-    printf("Send WebSocket\n");
-
-    esp_err_t ret =
-        httpd_ws_send_frame_async(
-            server,
-            ws_fd,
-            &ws_pkt
-        );
-
-    if (ret != ESP_OK)
-    {
-        ESP_LOGW(
-            TAG,
-            "WebSocket send failed: %s",
-            esp_err_to_name(ret)
-        );
-
-        ws_fd = -1;
-    }
+    websocket_send_data(response);
 }
 
 // Start HTTP server
 static httpd_handle_t start_web_server(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.max_uri_handlers = PAGE_COUNT + 8  ;
     httpd_handle_t server = nullptr;
     if (httpd_start(&server, &config) == ESP_OK)
     {

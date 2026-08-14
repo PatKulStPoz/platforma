@@ -1,5 +1,3 @@
-//import * as xterm from '/xterm/xterm.mjs';
-
 let socket = new WebSocket("ws://" + window.location.host + "/ws");
 const statusElement = document.getElementById("ws-status");
 
@@ -17,30 +15,60 @@ function updateState(object) {
     object.__animatedWheel.style.transform = `rotate(${ (360 * object.halTicks / object.halTicksFullRotation) % 36000 }deg)`
 }
 
+const term = document.getElementById("terminal");
+const termWind = document.getElementById("terminal_window")
 setInterval(() => {
     updateState(left);
     updateState(right);
 }, 500)
 
-//const term = new xterm.Terminal();
-//term.open(document.getElementById('terminal'));
+
+const ctx = document.getElementById('left_chart');
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
+      datasets: [{
+        label: '# of Votes',
+        data: [12, 19, 3, 5, 2, 3],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
 
 function log(...data) {
     console.log(data);
-    /*for (const i of data) {
-        term.write(i.toString());
-        term.write("\n\r");
-    }*/
+    const shouldScroll = termWind.scrollHeight - termWind.clientHeight <= termWind.scrollTop + 1;
+    for (const i of data) {
+        const span = document.createElement("span")
+        span.textContent = i;
+        term.appendChild(span)
+    }
+    if (shouldScroll) {
+        termWind.scrollTop = termWind.scrollHeight - termWind.clientHeight;
+    }
 }
 
 function error(...data) {
     console.error(data);
-    /*term.write("\x1B[1;3;31m");
+    const shouldScroll = termWind.scrollHeight - termWind.clientHeight <= termWind.scrollTop + 1;
     for (const i of data) {
-        term.write(i.toString());
-        term.write("\n\r");
+        const span = document.createElement("span")
+        span.textContent = i;
+        span.style.color = "red"
+        term.appendChild(span);
     }
-    term.write("\x1B[0m");*/
+    if (shouldScroll) {
+        termWind.scrollTop = termWind.scrollHeight - termWind.clientHeight;
+    }
 }
 
 socket.onopen = function () {

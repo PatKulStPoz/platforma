@@ -1,222 +1,94 @@
 #pragma once
-#include "driver.h"
-#include <vector>
 
-enum CmdDriver {
-    CMD_DRIVER_NONE = 0,
-    CMD_DRIVER_LEFT = 1,
-    CMD_DRIVER_RIGHT = 2,
-    CMD_DRIVER_BOTH = 3
-};
+#include "tasks.h"
+#include <string>
 
-class CommandTask {
-    public:
-    virtual ~CommandTask() {};
-    virtual void setup(Driver* left, Driver* right) {};
-    // true -> zakończony, false -> nie
-    virtual bool update(Driver* left, Driver* right, int tick) {
-        return true;
-    };
-    virtual void reset() {};
-};
-
-class SetLevelTask : public CommandTask {
-    CmdDriver driver;
-    uint8_t level;
-    public:
-    SetLevelTask(uint8_t level) {
-        this->driver = CMD_DRIVER_BOTH;
-        this->level = level; 
+bool parseAndExecute(DriverState* state, void (*print)(std::string), std::string input) {
+    if (input.length() < 3) {
+        return false;
     }
 
-    SetLevelTask(CmdDriver driver, uint8_t level) {
-        this->driver = driver;
-        this->level = level;
-    }
-    virtual void setup(Driver* left, Driver* right) {
-        if (this->driver & CMD_DRIVER_LEFT) left->setLevel(this->level);
-        if (this->driver & CMD_DRIVER_RIGHT) right->setLevel(this->level);
-    }
-};
+    int index = input.find(' ');
 
-class SetDirectionTask : public CommandTask {
-    CmdDriver driver;
-    DriverDirection direction;
-    public:
-    SetDirectionTask(DriverDirection direction) {
-        this->driver = CMD_DRIVER_BOTH;
-        this->direction = direction; 
+    std::string command;
+    std::string argument;
+    if (index != -1) {
+        command = input;
+        argument = "";
+    } else {
+        command = input.substr(0, index);
+        argument = input.substr(index);
     }
 
-    SetDirectionTask(CmdDriver driver, DriverDirection direction) {
-        this->driver = driver;
-        this->direction = direction; 
-    }
-    virtual void setup(Driver* left, Driver* right) {
-        if (this->driver & CMD_DRIVER_LEFT) left->setDirection(this->direction);
-        if (this->driver & CMD_DRIVER_RIGHT) right->setDirection(this->direction);
-    }
-};
+    TaskedDriver driver = TASK_DRIVER_BOTH;
+    
+    if (command.length() >= 3 && command.at(1) == ':') {
+        switch(command.at(0)) {
+            case 'L':
+            case 'l':
+            driver = TASK_DRIVER_LEFT;
+            break;
+            case 'R':
+            case 'r':
+            driver = TASK_DRIVER_RIGHT;
+            break;
+            default:
+            driver = TASK_DRIVER_NONE;
+        }        
 
-class RotateTask : public CommandTask {
-    CmdDriver driver;
-    int degrees;
-    public:
-    RotateTask(int degrees) {
-        this->driver = CMD_DRIVER_BOTH;
-        this->degrees = degrees;
-    }
-    RotateTask(CmdDriver driver, int degrees) {
-        this->driver = driver;
-        this->degrees = degrees;
+        command = command.substr(2);
     }
 
-    virtual void setup(Driver* left, Driver* right) {
-        if (this->driver & CMD_DRIVER_LEFT) {
-            left->rotateDeg(this->degrees);
-            left->start();
+    if (command == "start") {
+        state->pushTask(new StartTask(driver));
+    } else if (command == "stop") {
+        state->pushTask(new StopTask(driver));
+    } else if (command == "setlevel" || command == "setlvl") {
+        float level = atof(argument.c_str());
+        if (level < 0) {
+            print("WARN: level too low!");
+            level = 0;
+        } else if (level > 1) {
+            print("WARN: level too high!");
+            level = 1;
         }
-        if (this->driver & CMD_DRIVER_RIGHT) {
-            right->rotateDeg(this->degrees);
-            right->start();
+
+        state->pushTask(new SetLevelTask(driver, (int) (level * 255) ));
+    } else if (command == "setdirection" || command == "setdir") {
+        state->pushTask(new SetDirectionTask(driver, !argument.empty() && (argument.at(0) == 'B' || argument.at(0) == 'b') ? DRIVER_BACKWARDS : DRIVER_FORWARD ));
+    } else if (command == "rotate" || command == "r" || command == "rot") {
+        int level = atoi(argument.c_str());
+        if (level < 0) {
+            print("WARN: angle too low!");
+            level = 0;
         }
-    }
-    
-    virtual bool update(Driver* left, Driver* right, int tick) {
-        return true;
-    }
-};
 
-class StartTask : public CommandTask {
-    CmdDriver driver;
-    public:
-    StartTask() {
-        this->driver = CMD_DRIVER_BOTH;
-    }
-    StartTask(CmdDriver driver) {
-        this->driver = driver;
+        state->pushTask(new RotateTask(driver, level));
+    } else if (command == "wait" || command == "w") {
+        uint32_t level = atof(argument.c_str()) * 100;
+
+        state->pushTask(new WaitTicksTask(level));
+    } else if (command == "waitf" || command == "wf") {
+        state->pushTask(new WaitForFinishedTask(driver));
+    } else {
+        return false;
     }
 
-    virtual void setup(Driver* left, Driver* right) {
-        if (this->driver & CMD_DRIVER_LEFT) left->start();
-        if (this->driver & CMD_DRIVER_RIGHT) right->start();
-    }
-    
-    virtual bool update(Driver* left, Driver* right, int tick) {
-        return true;
-    }
-};
+    return true; 
+}
 
-class StopTask : public CommandTask {
-    CmdDriver driver;
-    public:
-    StopTask() {
-        this->driver = CMD_DRIVER_BOTH;
-    }
-    StopTask(CmdDriver driver) {
-        this->driver = driver;
-    }
-
-    virtual void setup(Driver* left, Driver* right) {
-        if (this->driver & CMD_DRIVER_LEFT) left->stop();
-        if (this->driver & CMD_DRIVER_RIGHT) right->stop();
-    }
-    
-    virtual bool update(Driver* left, Driver* right, int tick) {
-        return true;
-    }
-};
-
-class WaitForFinishedTask : public CommandTask {
-    CmdDriver driver;
-    public:
-    WaitForFinishedTask() {
-        this->driver = CMD_DRIVER_BOTH;
-    }
-
-    WaitForFinishedTask(CmdDriver driver) {
-        this->driver = driver;
-    }
-
-    virtual bool update(Driver* left, Driver* right, int tick) {
-        return (!(this->driver & CMD_DRIVER_LEFT) || !left->isAutomatic()) && (!(this->driver & CMD_DRIVER_RIGHT) || !right->isAutomatic());
-    }
-};
-
-class WaitTicksTask : public CommandTask {
-    int ticks;
-    public:
-    // tick -> ~10ms
-    WaitTicksTask(int ticks) {
-        this->ticks = ticks;
-    }
-    
-    virtual bool update(Driver* left, Driver* right, int tick) {
-        return tick >= this->ticks;
-    }
-};
-
-class RepeatTasks : public CommandTask {
-    std::vector<CommandTask*> tasks;
-
-    int task = 0;
-    CommandTask* currentTask = NULL;
-    int loop = 0;
-    int tick = 0;
-    int repeats;
-
-    public:
-    RepeatTasks(std::initializer_list<CommandTask*> tasks, int repeats) {
-        this->tasks = tasks;
-        this->repeats = repeats;
-    }
-
-    virtual ~RepeatTasks() {
-        for (CommandTask* task : this->tasks) {
-            delete task;
-        }
-    };
-
-    
-    virtual bool update(Driver* left, Driver* right, int tick) {
-        while(this->repeats > this->loop) {
-            if (this->currentTask == NULL) {
-                this->tick = 0;
-                this->currentTask = tasks.at(this->task);
-                this->currentTask->setup(left, right);
-                printf("RepeatTasks: Changing Task\n");
+bool parseAndExecuteMulti(DriverState* state, void (*print)(std::string), std::string input) {
+    for (int i = 0; i < input.length(); i++) {
+        if (input.at(i) == ';' || input.at(i) == '\n') {
+            if (!parseAndExecute(state, print, input.substr(0, i))) return false;
+            if (input.length() <= i + 1) {
+                return true;
             }
 
-            if (this->currentTask->update(left, right, this->tick++)) {
-                this->currentTask->reset();
-                this->currentTask = NULL;
-                printf("RepeatTasks: Finished Task\n");
-
-                if (++this->task == this->tasks.size()) {
-                    printf("RepeatTasks: Reset\n");
-                    this->loop++;
-                    this->task = 0;
-                }
-
-                if (this->loop == this->repeats) {
-                    printf("RepeatTasks: Loops finished\n");
-                    return true;
-                }
-            } else {
-                return false;
-            }
+            input = input.substr(i + 1);
+            i = 0;
         }
-        printf("RepeatTasks: Bad call?\n");
-
-        return true;
     }
 
-    virtual void reset() {
-        for (CommandTask* task : this->tasks) {
-            task->reset();
-        }
-        this->task = 0;
-        this->currentTask = NULL;
-        this->loop = 0;
-    };
-};
+    return parseAndExecute(state, print, input);
+}

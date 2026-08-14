@@ -8,17 +8,12 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "../control/driver.h"
-#include "../control/command.h"
 #include <queue>
 #include "mdns.h"
+#include "../state.h"
+#include "../control/command.h"
 
-struct DriverPair {
-    Driver* left;
-    Driver* right;
-};
-
-void update_info(Driver* left, Driver* right)
-{
+void update_info(Driver* left, Driver* right) {
     l_driverTicksFullRotation = left->getDriverTicksFullRotation();
     l_halTicksFullRotation = left->getHalTicksFullRotation();
     l_driverTicks = left->getDriverTicks();
@@ -34,8 +29,7 @@ void update_info(Driver* left, Driver* right)
     r_halTicks = right->getHalTicks();
 }
 
-static void websocket_task(void *arg)
-{
+static void websocket_task(void *arg) {
     ESP_LOGI(
             TAG,
             "Task started!"
@@ -43,17 +37,18 @@ static void websocket_task(void *arg)
     while (true)
     {
         update_info(
-            static_cast<DriverPair*>(arg)->left,
-            static_cast<DriverPair*>(arg)->right
+            static_cast<DriverState*>(arg)->leftDriver(),
+            static_cast<DriverState*>(arg)->rightDriver()
         );
-        websocket_send_data();
+        websocket_send_update_data();
         vTaskDelay(
-            pdMS_TO_TICKS(1000)
+            pdMS_TO_TICKS(500)
         );
     }
 }
 
-void web_setup(Driver* left, Driver* right) {
+void web_setup(DriverState* state) {
+    static_driverState = state;
     //Initialize NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -107,7 +102,5 @@ void web_setup(Driver* left, Driver* right) {
 
     mdns_service_add("ESP32-WebServer", "_http", "_tcp", 80, NULL, 0);
 
-    auto* drivers = new DriverPair{left, right};
-
-    xTaskCreate(websocket_task, "websocket_task", 4096, drivers, 5, nullptr);
+    xTaskCreate(websocket_task, "websocket_task", 4096, state, 5, nullptr);
 }

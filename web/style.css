@@ -25,6 +25,29 @@ html {
     font-size: 1.2em;
 }
 
+#terminal_window {
+    display: block;
+    height: 500px;
+    width: min(800px, 100%);
+    background: black;
+    color: white;
+    overflow-y: scroll;
+    justify-content: end;
+}
+
+#terminal > span {
+    margin-top: 2px;
+}
+
+#terminal {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-content: flex-start;
+    justify-content: flex-end;
+    padding: 5px;
+}
+
 #terminal_send {
     margin-top: 5px;
     display: flex;
@@ -79,11 +102,6 @@ html {
 .animated_wheel > .point:nth-child(3) {
   background: yellow;
   transform: translate(0, 26px);
-}
-
-
-#terminal {
-    display: block;
 }
 
 #center_holder {    
