@@ -25,7 +25,7 @@ setInterval(() => {
 
 const ctx = document.getElementById('left_chart');
 
-  new Chart(ctx, {
+ /* new Chart(ctx, {
     type: 'line',
     data: {
       labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
@@ -43,7 +43,7 @@ const ctx = document.getElementById('left_chart');
       }
     }
   });
-
+*/
 function log(...data) {
     console.log(data);
     const shouldScroll = termWind.scrollHeight - termWind.clientHeight <= termWind.scrollTop + 1;
@@ -108,6 +108,8 @@ socket.onmessage = function (event) {
                 right[property.substring(2)] = data[property];
             }
         }
+    } else if (data["__type"] == "print") {
+        log(data.text)
     }
 };
 

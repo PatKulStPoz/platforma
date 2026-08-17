@@ -9,10 +9,14 @@
 #include "web/main.cpp"
 #include "state.h"
 #include <inttypes.h>
+#include "pinout_config.h"
 
 // APP MAIN
 extern "C" void app_main(void) {
     gpio_install_isr_service(ESP_INTR_FLAG_EDGE);
+
+    gpio_output_enable(STATUS_LED);
+
     driver_prepare();
 
     DriverState* state = new DriverState();
@@ -31,14 +35,12 @@ extern "C" void app_main(void) {
     int lastHal2 = 0;
     vTaskDelay(3000 / portTICK_PERIOD_MS);
 
-    //tasks.push(new SetDirectionTask(DRIVER_BACKWARDS));
-    //tasks.push(new SetLevelTask(100));
-    //tasks.push(new StartTask());
-
-
     BaseTask* currentTask = NULL;
-    int tick = 0;
+    uint32_t tick = 0;
     uint32_t taskTick = 0;
+
+    int ledTime = 100;
+
     while (true) {
         vTaskDelay(10 / portTICK_PERIOD_MS);
 
@@ -47,28 +49,33 @@ extern "C" void app_main(void) {
                 taskTick = 0;
                 currentTask = state->popTask();
                 currentTask->setup(left, right);
-                printf("Task Changed!\n");
+                printf(("Changing Task to " + currentTask->toString() + "\n").c_str());
+                ledTime = 10;
             } else if (currentTask == NULL && !state->hasTasks()) {
                 break;
             }
 
             if (currentTask != NULL && currentTask->update(left, right, taskTick)) {
+                printf(("Task " + currentTask->toString() + " finished!\n").c_str());
                 delete currentTask;
                 currentTask = NULL;
-                printf("Task Finished!\n");
+                ledTime = 100;
             } else {
                 break;
             }
         }
 
+
+        gpio_set_level(STATUS_LED, (tick / ledTime) % 2 != 0);
+
         // Aktualizują stan sterownika
         left->update();
         right->update();
 
-        /*if (tick % 10 == 0) {
-            printf("Left> Hal: %d, Driver: %d, Time: %d0 ms, Last: %d, Dir: %d, Intr %d\n", left->getHalTicks(), left->getDriverTicksPerHal(), taskTick - tickOld, 
-           left->getLastHall(), left->getHallDirection(), left->getIntrCount());
-        }*/
+        //if (tick % 10 == 0) {
+        //    printf("Left> Hal: %d, Driver: %d, Time: %" PRIu32 " ms, Last: %d, Dir: %d, Intr %d\n", left->getHalTicks(), left->getDriverTicksPerHal(), taskTick - tickOld, 
+        //   left->getLastHall(), left->getHallDirection(), left->getIntrCount());
+        //}
 
         int newHal = left->getHalTicks();
         if (newHal != lastHal) {

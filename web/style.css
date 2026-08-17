@@ -28,15 +28,22 @@ html {
 #terminal_window {
     display: block;
     height: 500px;
-    width: min(800px, 100%);
     background: black;
     color: white;
     overflow-y: scroll;
     justify-content: end;
+    flex: 100;
 }
 
 #terminal > span {
     margin-top: 2px;
+}
+
+#terminal_box {
+   flex-basis: 0;
+   flex-grow: 1;
+   padding: 10px;
+   max-width: 900px;
 }
 
 #terminal {
@@ -46,6 +53,8 @@ html {
     align-content: flex-start;
     justify-content: flex-end;
     padding: 5px;
+    min-width: 200px;
+    flex-grow: 100;
 }
 
 #terminal_send {

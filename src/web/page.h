@@ -39,15 +39,22 @@ html {
 #terminal_window {
     display: block;
     height: 500px;
-    width: 800px;
     background: black;
     color: white;
     overflow-y: scroll;
     justify-content: end;
+    flex: 100;
 }
 
 #terminal > span {
     margin-top: 2px;
+}
+
+#terminal_box {
+   flex-basis: 0;
+   flex-grow: 1;
+   padding: 10px;
+   max-width: 900px;
 }
 
 #terminal {
@@ -57,6 +64,8 @@ html {
     align-content: flex-start;
     justify-content: flex-end;
     padding: 5px;
+    min-width: 200px;
+    flex-grow: 100;
 }
 
 #terminal_send {
@@ -192,7 +201,7 @@ static const char* file_page_html = R"raw(
                 <canvas id="right_chart" width="200" height="100"></canvas>
             </div>
         </div>
-        <div>
+        <div id="terminal_box">
             <div id="terminal_window"><div id="terminal"></div></div>
             <div id="terminal_send">
                 <input type="text" id="terminal_input" name="command" />
@@ -248,7 +257,7 @@ setInterval(() => {
 
 const ctx = document.getElementById('left_chart');
 
-  new Chart(ctx, {
+ /* new Chart(ctx, {
     type: 'line',
     data: {
       labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
@@ -266,7 +275,7 @@ const ctx = document.getElementById('left_chart');
       }
     }
   });
-
+*/
 function log(...data) {
     console.log(data);
     const shouldScroll = termWind.scrollHeight - termWind.clientHeight <= termWind.scrollTop + 1;
@@ -331,6 +340,8 @@ socket.onmessage = function (event) {
                 right[property.substring(2)] = data[property];
             }
         }
+    } else if (data["__type"] == "print") {
+        log(data.text)
     }
 };
 

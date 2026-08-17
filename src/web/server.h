@@ -78,10 +78,12 @@ void websocket_print(std::string text) {
             sizeof(response),
             R"rawliteral({
                 "__type": "print",
-                "text": %s
+                "text": "%s"
             })rawliteral",
             text.c_str()
         );
+
+    //printf(("WS Response>" + text + "\n").c_str());
 
     websocket_send_data(response);
 }
@@ -100,7 +102,8 @@ static esp_err_t websocket_handler(httpd_req_t *req)
     //ESP_LOGI(TAG, "=== WEBSOCKET FRAME ===");
 
     httpd_ws_frame_t ws_pkt = {};
-    
+    memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
+    ws_pkt.type = HTTPD_WS_TYPE_TEXT;
     esp_err_t ret = httpd_ws_recv_frame(req, &ws_pkt, 0);
 
     ESP_LOGI(TAG,
@@ -133,7 +136,7 @@ static esp_err_t websocket_handler(httpd_req_t *req)
                      reinterpret_cast<char *>(buf));
         }
 
-        std::string str = reinterpret_cast<char *>(buf);
+        std::string str = reinterpret_cast<char*>(buf);
 
         if (str.starts_with("EXEC>")) {
             parseAndExecuteMulti(static_driverState, websocket_print, str.substr(5));

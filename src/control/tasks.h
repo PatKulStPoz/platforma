@@ -1,7 +1,7 @@
 #pragma once
 #include "driver.h"
 #include <vector>
-
+#include <string>
 enum TaskedDriver {
     TASK_DRIVER_NONE = 0,
     TASK_DRIVER_LEFT = 1,
@@ -18,6 +18,8 @@ class BaseTask {
         return true;
     };
     virtual void reset() {};
+
+    virtual std::string toString() = 0;
 };
 
 class SetLevelTask : public BaseTask {
@@ -37,6 +39,10 @@ class SetLevelTask : public BaseTask {
         if (this->driver & TASK_DRIVER_LEFT) left->setLevel(this->level);
         if (this->driver & TASK_DRIVER_RIGHT) right->setLevel(this->level);
     }
+
+    virtual std::string toString() {
+        return "SetLevelTask[driver=" + std::to_string(this->driver) + ", level=" + std::to_string(this->level) + "]";
+    }
 };
 
 class SetDirectionTask : public BaseTask {
@@ -55,6 +61,10 @@ class SetDirectionTask : public BaseTask {
     virtual void setup(Driver* left, Driver* right) {
         if (this->driver & TASK_DRIVER_LEFT) left->setDirection(this->direction);
         if (this->driver & TASK_DRIVER_RIGHT) right->setDirection(this->direction);
+    }
+
+    virtual std::string toString() {
+        return "SetDirectionTask[driver=" + std::to_string(this->driver) + ", direction=" + std::to_string(this->direction) + "]";
     }
 };
 
@@ -85,6 +95,10 @@ class RotateTask : public BaseTask {
     virtual bool update(Driver* left, Driver* right, uint32_t tick) {
         return true;
     }
+
+    virtual std::string toString() {
+        return "RotateTask[driver=" + std::to_string(this->driver) + ", degrees=" + std::to_string(this->degrees) + "]";
+    }
 };
 
 class StartTask : public BaseTask {
@@ -104,6 +118,10 @@ class StartTask : public BaseTask {
     
     virtual bool update(Driver* left, Driver* right, uint32_t tick) {
         return true;
+    }
+
+    virtual std::string toString() {
+        return "StartTask[driver=" + std::to_string(this->driver) + "]";
     }
 };
 
@@ -125,6 +143,10 @@ class StopTask : public BaseTask {
     virtual bool update(Driver* left, Driver* right, uint32_t tick) {
         return true;
     }
+
+    virtual std::string toString() {
+        return "StopTask[driver=" + std::to_string(this->driver) + "]";
+    }
 };
 
 class WaitForFinishedTask : public BaseTask {
@@ -141,6 +163,10 @@ class WaitForFinishedTask : public BaseTask {
     virtual bool update(Driver* left, Driver* right, uint32_t tick) {
         return (!(this->driver & TASK_DRIVER_LEFT) || !left->isAutomatic()) && (!(this->driver & TASK_DRIVER_RIGHT) || !right->isAutomatic());
     }
+
+    virtual std::string toString() {
+        return "WaitForFinishedTask[driver=" + std::to_string(this->driver) + "]";
+    }
 };
 
 class WaitTicksTask : public BaseTask {
@@ -153,6 +179,10 @@ class WaitTicksTask : public BaseTask {
     
     virtual bool update(Driver* left, Driver* right, uint32_t tick) {
         return tick >= this->ticks;
+    }
+
+    virtual std::string toString() {
+        return "WaitTicksTask[ticks=" + std::to_string(this->ticks) + "]";
     }
 };
 
@@ -184,13 +214,13 @@ class RepeatTasks : public BaseTask {
                 this->tick = 0;
                 this->currentTask = tasks.at(this->task);
                 this->currentTask->setup(left, right);
-                printf("RepeatTasks: Changing Task\n");
+                printf(("RepeatTasks: Changing Task to " + this->currentTask->toString() + "\n").c_str());
             }
 
             if (this->currentTask->update(left, right, this->tick++)) {
+                printf(("RepeatTasks: Finished Task " + this->currentTask->toString() + "\n").c_str());
                 this->currentTask->reset();
                 this->currentTask = NULL;
-                printf("RepeatTasks: Finished Task\n");
 
                 if (++this->task == this->tasks.size()) {
                     printf("RepeatTasks: Reset\n");
@@ -219,4 +249,8 @@ class RepeatTasks : public BaseTask {
         this->currentTask = NULL;
         this->loop = 0;
     };
+
+    virtual std::string toString() {
+        return "RepeatTask[tasks=[{" + std::to_string(this->tasks.size()) + "}], repeats=" + std::to_string(this->repeats) + "]";
+    }
 };

@@ -1,6 +1,6 @@
 
 #pragma once
-#include "driver_config.h"
+#include "../pinout_config.h"
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 
@@ -50,13 +50,18 @@ class Driver {
 
     bool automatic = false;
 
-    void setLevelNoUpdate(uint8_t value) {
+    void setTargetLevel(uint8_t value) {
         this->targetVal = value << 2;
+    }
+
+    void updateOuputLevel(uint8_t value) {
+        dac_oneshot_output_voltage(this->dacHandle, value);
     }
 
     void updateAutomatic() {
         if (this->automatic && this->rotationTick-- <= 0) {
-            setLevelNoUpdate(0);
+            this->setTargetLevel(0);
+            this->updateOuputLevel(0);
             this->automatic = false;
         }
     }
@@ -73,7 +78,13 @@ class Driver {
     void setup() {
         gpio_input_enable(this->config.driver_in);
         gpio_input_enable(this->config.hall_main_in);
-        
+        gpio_input_enable(this->config.hall_back_in);
+        gpio_input_enable(this->config.hall_front_in);
+
+        gpio_pullup_en(this->config.hall_main_in);
+        gpio_pullup_en(this->config.hall_back_in);
+        gpio_pullup_en(this->config.hall_front_in);
+
         gpio_set_intr_type(this->config.driver_in, GPIO_INTR_POSEDGE);
         gpio_isr_handler_add(this->config.driver_in, intrDriverIn, this);
         gpio_intr_enable(this->config.driver_in);
@@ -92,18 +103,21 @@ class Driver {
 
 
         gpio_output_enable(this->config.direction_out);
+        gpio_set_level(this->config.direction_out, 0);
 
         dac_oneshot_config_t dacConfig = {
             .chan_id = this->config.control_channel
         };
 
         dac_oneshot_new_channel(&dacConfig, &this->dacHandle);
+        dac_oneshot_output_voltage(this->dacHandle, 0);
     }
 
 
     // Czysci zmiany zrobione przez driver
     void destroy() {
-        gpio_reset_pin(this->config.brakes_out);
+        gpio_reset_pin(this->config.brake_dir_out);
+        gpio_reset_pin(this->config.brake_step_out);
         gpio_reset_pin(this->config.direction_out);
         gpio_reset_pin(this->config.driver_in);
         gpio_reset_pin(this->config.hall_main_in);
@@ -179,12 +193,13 @@ class Driver {
 
     // Rozpoczyna obrót
     void start() {
-        this->setLevelNoUpdate(this->value);
+        this->setTargetLevel(this->value);
     }
 
     // Konczy obrót
     void stop() {
-        this->setLevelNoUpdate(0);
+        this->setTargetLevel(0);
+        this->updateOuputLevel(0);
     }
 
     void setDirection(DriverDirection direction) {
@@ -200,10 +215,10 @@ class Driver {
     // Aktualizuje stan na pinach.
     void update() {
         if (this->currentVal < this->targetVal) {
-            dac_oneshot_output_voltage(this->dacHandle, (++this->currentVal) >> 2);
+            updateOuputLevel((++this->currentVal) >> 2);
         } else if (this->currentVal > this->targetVal) {
             this->currentVal = this->targetVal;
-            dac_oneshot_output_voltage(this->dacHandle, this->currentVal >> 2);
+            updateOuputLevel(this->currentVal >> 2);
         }
 
         //printf("Current: %d\n", this->driverTicks);

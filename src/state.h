@@ -51,6 +51,9 @@ class DriverState {
     }
 
     bool hasTasks() {
-        return !this->tasks.empty();
+        xSemaphoreTake(this->taskSemaphore, portMAX_DELAY);
+        bool state = !this->tasks.empty();
+        xSemaphoreGive(this->taskSemaphore);
+        return state;
     }
 };
