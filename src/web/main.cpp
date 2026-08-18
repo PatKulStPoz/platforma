@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "hotspot.h"
+#include "wifi.h"
 #include "server.h"
 #include "driver/gpio.h"
 #include "sdkconfig.h"
@@ -14,15 +14,15 @@
 #include "../control/command.h"
 
 void update_info(Driver* left, Driver* right) {
-    l_driverTicksFullRotation = left->getDriverTicksFullRotation();
-    l_halTicksFullRotation = left->getHalTicksFullRotation();
+    l_driverTicksFullRotation = left->getConfig().driver_ticks_per_full_rotation;
+    l_halTicksFullRotation = left->getConfig().hall_sensor_ticks_per_full_rotation;
     l_driverTicks = left->getDriverTicks();
     l_rotationTick = left->getRotationTick();
     l_driverTicksPerHal = left->getDriverTicksPerHal();
     l_halTicks = left->getHalTicks();
 
-    r_driverTicksFullRotation = right->getDriverTicksFullRotation();
-    r_halTicksFullRotation = right->getHalTicksFullRotation();
+    r_driverTicksFullRotation = right->getConfig().driver_ticks_per_full_rotation;
+    r_halTicksFullRotation = right->getConfig().hall_sensor_ticks_per_full_rotation;
     r_driverTicks = right->getDriverTicks();
     r_rotationTick = right->getRotationTick();
     r_driverTicksPerHal = right->getDriverTicksPerHal();
@@ -58,7 +58,11 @@ void web_setup(DriverState* state) {
     ESP_ERROR_CHECK(ret);
 
     ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
-    wifi_init_softap();
+    if (AP_WIFI_ENABLED) {
+        wifi_init_softap();
+    } else if (CONN_WIFI_ENABLED) {
+        wifi_init_sta();
+    }
 
     // Start web server
     server = start_web_server();
@@ -73,19 +77,23 @@ void web_setup(DriverState* state) {
             TAG,
             "Web Server started!"
         );
+
+        if (AP_WIFI_ENABLED) {
+            ESP_LOGI(
+                TAG,
+                "Connect to WiFi: %s",
+                AP_WIFI_SSID
+            );
+            ESP_LOGI(
+                TAG,
+                "Password: %s",
+                AP_WIFI_PASS
+            );
+        }
         ESP_LOGI(
             TAG,
-            "Connect to WiFi: %s",
-            ESP_WIFI_SSID
-        );
-        ESP_LOGI(
-            TAG,
-            "Password: %s",
-            ESP_WIFI_PASS
-        );
-        ESP_LOGI(
-            TAG,
-            "Open: http://192.168.4.1/"
+            "Open: http://%s.local",
+            MDNS_HOSTNAME
         );
         ESP_LOGI(
             TAG,
@@ -95,10 +103,10 @@ void web_setup(DriverState* state) {
 
     ESP_ERROR_CHECK(mdns_init());
     //set mDNS hostname (required if you want to advertise services)
-    ESP_ERROR_CHECK(mdns_hostname_set(ESP_MDNS_HOSTNAME));
-    ESP_LOGI(TAG, "mdns hostname set to: [%s]", ESP_MDNS_HOSTNAME);
+    ESP_ERROR_CHECK(mdns_hostname_set(MDNS_HOSTNAME));
+    ESP_LOGI(TAG, "mdns hostname set to: [%s]", MDNS_HOSTNAME);
     //set default mDNS instance name
-    ESP_ERROR_CHECK(mdns_instance_name_set(ESP_MDNS_NAME));
+    ESP_ERROR_CHECK(mdns_instance_name_set(MDNS_NAME));
 
     mdns_service_add("ESP32-WebServer", "_http", "_tcp", 80, NULL, 0);
 

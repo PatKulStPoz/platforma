@@ -83,11 +83,11 @@ class RotateTask : public BaseTask {
 
     virtual void setup(Driver* left, Driver* right) {
         if (this->driver & TASK_DRIVER_LEFT) {
-            left->rotateDeg(this->degrees);
+            left->rotateDegrees(this->degrees);
             left->start();
         }
         if (this->driver & TASK_DRIVER_RIGHT) {
-            right->rotateDeg(this->degrees);
+            right->rotateDegrees(this->degrees);
             right->start();
         }
     }
@@ -149,6 +149,27 @@ class StopTask : public BaseTask {
     }
 };
 
+class ResetTask : public BaseTask {
+    TaskedDriver driver;
+    public:
+    ResetTask() {
+        this->driver = TASK_DRIVER_BOTH;
+    }
+
+    ResetTask(TaskedDriver driver) {
+        this->driver = driver;
+    }
+
+    virtual void setup(Driver* left, Driver* right) {
+        if (this->driver & TASK_DRIVER_LEFT) left->reset();
+        if (this->driver & TASK_DRIVER_RIGHT) right->reset();
+    }
+
+    virtual std::string toString() {
+        return "ResetTask[driver=" + std::to_string(this->driver) + "]";
+    }
+};
+
 class WaitForFinishedTask : public BaseTask {
     TaskedDriver driver;
     public:
@@ -173,7 +194,7 @@ class WaitTicksTask : public BaseTask {
     uint32_t ticks;
     public:
     // tick -> ~10ms
-    WaitTicksTask(u32_t ticks) {
+    WaitTicksTask(uint32_t ticks) {
         this->ticks = ticks;
     }
     

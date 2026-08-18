@@ -2,6 +2,7 @@
 
 #include "tasks.h"
 #include <string>
+#include <stdio.h>
 
 std::string strdrv(TaskedDriver driver) {
     switch (driver) {
@@ -70,6 +71,18 @@ bool parseAndExecute(DriverState* state, void (*print)(std::string), std::string
         }
         print("Added set level of " + strdrv(driver) + " to " + std::to_string(level) + " task");
         state->pushTask(new SetLevelTask(driver, (int) (level * 255) ));
+    } else if (command == "setlevelnow" || command == "setlvln") {
+        float level = atof(argument.c_str());
+        if (level < 0) {
+            print("WARN: level too low!");
+            level = 0;
+        } else if (level > 1) {
+            print("WARN: level too high!");
+            level = 1;
+        }
+        print("Set level of " + strdrv(driver) + " to " + std::to_string(level));
+        if (driver & TASK_DRIVER_LEFT) state->leftDriver()->setLevel(level * 255);
+        if (driver & TASK_DRIVER_RIGHT) state->rightDriver()->setLevel(level * 255);
     } else if (command == "setdirection" || command == "setdir") {
         DriverDirection direction = !argument.empty() && (argument.at(0) == 'B' || argument.at(0) == 'b') ? DRIVER_BACKWARDS : DRIVER_FORWARD;
 
@@ -93,6 +106,16 @@ bool parseAndExecute(DriverState* state, void (*print)(std::string), std::string
     } else if (command == "waitf" || command == "wf") {
         print("Added wait until " + strdrv(driver) + " finishes task");
         state->pushTask(new WaitForFinishedTask(driver));
+    } else if (command == "reset" || command == "r") {
+        print("Added reset " + strdrv(driver) + " task");
+        state->pushTask(new ResetTask(driver));
+    } else if (command == "cleartasks" || command == "clrtsk") {
+        print("Cleared all tasks");
+        state->clearTasks();
+    } else if (command == "esp32-reboot") {
+        print("See you in a moment!");
+        vTaskDelay(pdMS_TO_TICKS(100));
+        esp_restart();
     } else {
         print("ERROR: Invalid task '" + command + "' with argument '" + argument + "'");
         return false;
@@ -107,7 +130,10 @@ bool parseAndExecuteMulti(DriverState* state, void (*print)(std::string), std::s
         if (input.at(0) == ' ' || input.at(0) == ';' || input.at(0) == '\n') {
             input = input.substr(1);
         } else if (input.at(i) == ';' || input.at(i) == '\n') {
-            if (!parseAndExecute(state, print, input.substr(0, i))) return false;
+            if (!parseAndExecute(state, print, input.substr(0, i))) {
+                return false;
+            }
+
             if (input.length() <= i + 1) {
                 return true;
             }
@@ -119,5 +145,55 @@ bool parseAndExecuteMulti(DriverState* state, void (*print)(std::string), std::s
         }
     }
 
-    return parseAndExecute(state, print, input);
+    return input.length() == 0 ? true : parseAndExecute(state, print, input);
+}
+//setlvl 0.5;l:rotate 180;waitf;l:setdir b;l:rotate 180;waitf;setdir f
+
+void uartcmd_println(std::string text) {
+    printf("[CMD] ");
+    printf(text.c_str());
+    printf("\n");
+}
+
+void uartcmd_task(void *arg) {
+    DriverState* state = static_cast<DriverState*>(arg);
+
+    int i = 0;
+    char line[512];
+    
+    vTaskDelay(pdMS_TO_TICKS(10));
+    while (getchar() != EOF) {}
+    vTaskDelay(pdMS_TO_TICKS(10));
+
+    printf("[CMD] READY!");
+
+    while (true) {
+        int c;
+
+        while ((c = getchar()) != EOF) {
+            if (c == '\n' || i >= 500) {
+                break;
+            }
+
+            if (c == '\b') {
+                if (i > 0) i--;
+                continue;
+            }
+
+            line[i++] = c;
+        }
+
+        if (c == EOF || i == 0) {
+            vTaskDelay(pdMS_TO_TICKS(10));
+            continue;
+        }
+
+        line[i] = 0;
+        parseAndExecuteMulti(state, uartcmd_println, std::string(line));
+        i = 0;
+    }
+}
+
+void uartcmd_setup(DriverState* state) {
+    xTaskCreate(uartcmd_task, "uart_command_task", 4096, state, 5, nullptr);
 }

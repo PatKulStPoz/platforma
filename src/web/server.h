@@ -11,7 +11,7 @@
 #include "lwip/sys.h"
 #include "esp_log.h"
 #include <string>
-#include "hotspot.h"
+#include "wifi.h"
 #include "page.h"
 #include "../state.h"
 #include "../control/command.h"
@@ -86,6 +86,10 @@ void websocket_print(std::string text) {
     //printf(("WS Response>" + text + "\n").c_str());
 
     websocket_send_data(response);
+}
+
+void websocket_print_cmd(std::string text) {
+    websocket_print("[CMD] " + text);
 }
 
 //websocket handler

@@ -230,7 +230,7 @@ static esp_err_t page_get_file_page_html_handler(httpd_req_t *req) {
 }
 
 static const char* file_script_js = R"raw(
-let socket = new WebSocket("ws://" + window.location.host + "/ws");
+let connetion = new WebSocket("ws://" + window.location.host + "/ws");
 const statusElement = document.getElementById("ws-status");
 
 function createObj(name) {
@@ -303,53 +303,77 @@ function error(...data) {
     }
 }
 
-socket.onopen = function () {
-    log("[WEB] WebSocket connected");
-    statusElement.textContent = "POŁĄCZONO";
-    socket.send("CONNECTED>");
-};
+function setup_socket(socket) {
+    socket.onopen = function () {
+        log("[WEB] WebSocket connected");
+        statusElement.textContent = "POŁĄCZONO";
+        socket.send("CONNECTED>");
+    };
 
-socket.onmessage = function (event) {
-    log("[ESP32] " + event.data);
-};
+    socket.onmessage = function (event) {
+        log("[ESP32] " + event.data);
+    };
 
-socket.onerror = function (err) {
-    error("[WEB] WebSocket error:", err);
-    statusElement.textContent = "BŁĄD";
-};
+    socket.onerror = function (err) {
+        error("[WEB] WebSocket error:", err);
+        statusElement.textContent = "BŁĄD";
+    };
 
-socket.onclose = function () {
-    log("[WEB] WebSocket disconnected");
-    statusElement.textContent = "ROZŁĄCZONO";
-};
+    socket.onclose = function () {
+        log("[WEB] WebSocket disconnected... Reconnecting in 5 seconds");
+        statusElement.textContent = "ROZŁĄCZONO";
 
-socket.onmessage = function (event) {
-    const data = JSON.parse(event.data);
-    if (data["__type"] == "update_state") {
-        for (const property in data) {
-            if (property.startsWith("_")) continue;
-            
-            const doc = document.getElementById(`state:${property}`);
-            if (doc) {
-                doc.textContent = data[property];
+        setTimeout(() => {
+            log("[WEB] Attempting to reconnect...");
+            connetion = new WebSocket("ws://" + window.location.host + "/ws")
+            setup_socket(connetion);
+        }, 5000)
+    };
+
+    socket.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+        if (data["__type"] == "update_state") {
+            for (const property in data) {
+                if (property.startsWith("_")) continue;
+                
+                const doc = document.getElementById(`state:${property}`);
+                if (doc) {
+                    doc.textContent = data[property];
+                }
+
+                if (property.startsWith("l_")) {
+                    left[property.substring(2)] = data[property];
+                } else if (property.startsWith("r_")) {
+                    right[property.substring(2)] = data[property];
+                }
             }
-
-            if (property.startsWith("l_")) {
-                left[property.substring(2)] = data[property];
-            } else if (property.startsWith("r_")) {
-                right[property.substring(2)] = data[property];
-            }
+        } else if (data["__type"] == "print") {
+            log(data.text)
         }
-    } else if (data["__type"] == "print") {
-        log(data.text)
-    }
-};
+    };
+
+}
+
+setup_socket(connetion);
 
 const inputField = document.getElementById("terminal_input");
 const sendButton = document.getElementById("terminal_button");
 
+
+inputField.addEventListener("keypress", function(event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+
+    sendButton.click();
+  }
+});
+
 sendButton.onclick = () => {
-    socket.send(`EXEC>${inputField.value}`);
+    if (inputField.value == '') {
+        return;
+    }
+
+    connetion.send(`EXEC>${inputField.value}`);
     log(`EXEC>${inputField.value}`);
     inputField.value = "";
 }
