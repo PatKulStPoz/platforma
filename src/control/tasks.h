@@ -2,6 +2,8 @@
 #include "driver.h"
 #include <vector>
 #include <string>
+#include "behavior.h"
+
 enum TaskedDriver {
     TASK_DRIVER_NONE = 0,
     TASK_DRIVER_LEFT = 1,
@@ -83,11 +85,11 @@ class RotateTask : public BaseTask {
 
     virtual void setup(Driver* left, Driver* right) {
         if (this->driver & TASK_DRIVER_LEFT) {
-            left->rotateDegrees(this->degrees);
+            left->pushBehavior(this->driver & TASK_DRIVER_RIGHT ? new SyncedRotateBehavior(this->degrees, right) : new RotateBehavior(this->degrees));
             left->start();
         }
         if (this->driver & TASK_DRIVER_RIGHT) {
-            right->rotateDegrees(this->degrees);
+            left->pushBehavior(this->driver & TASK_DRIVER_LEFT ? new SyncedRotateBehavior(this->degrees, left) : new RotateBehavior(this->degrees));
             right->start();
         }
     }
@@ -100,6 +102,95 @@ class RotateTask : public BaseTask {
         return "RotateTask[driver=" + std::to_string(this->driver) + ", degrees=" + std::to_string(this->degrees) + "]";
     }
 };
+
+
+class SetSyncBehaviorTask : public BaseTask {
+    TaskedDriver driver;
+    public:
+    SetSyncBehaviorTask(TaskedDriver driver) {
+        this->driver = driver;
+    }
+
+    SetSyncBehaviorTask() {
+        this->driver = TASK_DRIVER_BOTH;
+    }
+
+    virtual void setup(Driver* left, Driver* right) {
+        if (this->driver & TASK_DRIVER_LEFT) {
+            left->resetBehavior();
+            left->pushBehavior(new SyncedForwardBehavior(right));
+        }
+        if (this->driver & TASK_DRIVER_RIGHT) {
+            right->resetBehavior();
+            right->pushBehavior(new SyncedForwardBehavior(left));
+        }
+    }
+    
+    virtual bool update(Driver* left, Driver* right, uint32_t tick) {
+        return true;
+    }
+
+    virtual std::string toString() {
+        return "SetSyncBehaviorTask[driver=" + std::to_string(this->driver) + "]";
+    }
+};
+
+class PopBehaviorTask : public BaseTask {
+    TaskedDriver driver;
+    public:
+    PopBehaviorTask(TaskedDriver driver) {
+        this->driver = driver;
+    }
+    PopBehaviorTask() {
+        this->driver = TASK_DRIVER_BOTH;
+    }
+
+    virtual void setup(Driver* left, Driver* right) {
+        if (this->driver & TASK_DRIVER_LEFT) {
+            left->popBehavior();
+        }
+        if (this->driver & TASK_DRIVER_RIGHT) {
+            right->popBehavior();
+        }
+    }
+    
+    virtual bool update(Driver* left, Driver* right, uint32_t tick) {
+        return true;
+    }
+
+    virtual std::string toString() {
+        return "PopBehaviorTask[driver=" + std::to_string(this->driver) + "]";
+    }
+};
+
+class ResetBehaviorTask : public BaseTask {
+    TaskedDriver driver;
+    public:
+    ResetBehaviorTask(TaskedDriver driver) {
+        this->driver = driver;
+    }
+    ResetBehaviorTask() {
+        this->driver = TASK_DRIVER_BOTH;
+    }
+
+    virtual void setup(Driver* left, Driver* right) {
+        if (this->driver & TASK_DRIVER_LEFT) {
+            left->resetBehavior();
+        }
+        if (this->driver & TASK_DRIVER_RIGHT) {
+            right->resetBehavior();
+        }
+    }
+    
+    virtual bool update(Driver* left, Driver* right, uint32_t tick) {
+        return true;
+    }
+
+    virtual std::string toString() {
+        return "ResetBehaviorTask[driver=" + std::to_string(this->driver) + "]";
+    }
+};
+
 
 class StartTask : public BaseTask {
     TaskedDriver driver;
@@ -182,6 +273,8 @@ class WaitForFinishedTask : public BaseTask {
     }
 
     virtual bool update(Driver* left, Driver* right, uint32_t tick) {
+        if (this->driver == TASK_DRIVER_NONE) return !right->isAutomatic() || !left->isAutomatic(); 
+
         return (!(this->driver & TASK_DRIVER_LEFT) || !left->isAutomatic()) && (!(this->driver & TASK_DRIVER_RIGHT) || !right->isAutomatic());
     }
 

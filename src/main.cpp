@@ -6,7 +6,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "control/driver.h"
-#include "web/main.cpp"
+#include "control/command.h"
+#include "web/main.h"
 #include "state.h"
 #include <inttypes.h>
 #include "pinout_config.h"
@@ -16,8 +17,6 @@ extern "C" void app_main(void) {
     gpio_install_isr_service(0);
 
     gpio_output_enable(STATUS_LED);
-
-    driver_prepare();
 
     DriverState* state = new DriverState();
 
@@ -62,13 +61,13 @@ extern "C" void app_main(void) {
         //    right->getLastHall(), right->getHallDirection(), right->getIntrCount());
         //}
 
-        int newHal = left->getHalTicks();
+        int newHal = left->getHallTicks();
         if (newHal != lastHal) {
             printf("[STATE|Left] Hal: %d, Driver: %d, Time: %" PRIu32 "0 ms, Last: %d, Dir: %d\n", newHal, left->getDriverTicksPerHal(), tick - tickOld, left->getLastHall(), left->getHallDirection());
             lastHal = newHal;
             tickOld = tick;
         }
-        newHal = right->getHalTicks();
+        newHal = right->getHallTicks();
         if (newHal != lastHal2) {
             printf("[STATE|Right] Hal: %d, Driver: %d, Time: %" PRIu32 "0 ms, Last: %d, Dir: %d\n", newHal, right->getDriverTicksPerHal(), tick - tickOld2, right->getLastHall(), right->getHallDirection());
             lastHal2 = newHal;
@@ -77,3 +76,8 @@ extern "C" void app_main(void) {
         tick++;
     }
 }
+
+#include "control/command.cpp"
+#include "control/workaround.cpp"
+#include "util/stringreader.cpp"
+#include "web/main.cpp"

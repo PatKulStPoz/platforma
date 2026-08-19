@@ -6,7 +6,7 @@
 
 // https://randomnerdtutorials.com/esp32-pinout-reference-gpios/
 
-#define STATUS_LED GPIO_NUM_13
+#define STATUS_LED GPIO_NUM_14
 #define STATUS_BATTERY_READ GPIO_NUM_36
 
 typedef struct {
@@ -28,7 +28,7 @@ typedef struct {
 
 DriverPinout LEFT_DRIVER_PINS = {
     .control_channel = DAC_CHAN_0, 
-    .direction_out = GPIO_NUM_14, 
+    .direction_out = GPIO_NUM_13, 
     .brake_out = GPIO_NUM_12, 
     .driver_in = GPIO_NUM_27, 
     .hall_back_in = GPIO_NUM_34, 

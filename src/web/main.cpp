@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "main.h"
 #include "wifi.h"
 #include "server.h"
 #include "driver/gpio.h"
@@ -17,16 +18,16 @@ void update_info(Driver* left, Driver* right) {
     l_driverTicksFullRotation = left->getConfig().driver_ticks_per_full_rotation;
     l_halTicksFullRotation = left->getConfig().hall_sensor_ticks_per_full_rotation;
     l_driverTicks = left->getDriverTicks();
-    l_rotationTick = left->getRotationTick();
+    l_rotationTick = 0;
     l_driverTicksPerHal = left->getDriverTicksPerHal();
-    l_halTicks = left->getHalTicks();
+    l_halTicks = left->getHallTicks();
 
     r_driverTicksFullRotation = right->getConfig().driver_ticks_per_full_rotation;
     r_halTicksFullRotation = right->getConfig().hall_sensor_ticks_per_full_rotation;
     r_driverTicks = right->getDriverTicks();
-    r_rotationTick = right->getRotationTick();
+    r_rotationTick = 0;
     r_driverTicksPerHal = right->getDriverTicksPerHal();
-    r_halTicks = right->getHalTicks();
+    r_halTicks = right->getHallTicks();
 }
 
 static void websocket_task(void *arg) {
