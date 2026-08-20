@@ -54,6 +54,7 @@ class StringReader {
 	Result<std::string> readQuotedString();
 
 	Result<int> readInt();
+	Result<uint32_t> readUInt();
 	Result<double> readDouble();
 	Result<bool> readBool();
 

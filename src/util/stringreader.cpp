@@ -152,7 +152,6 @@ Result<int> StringReader :: readInt() {
 		out = chr - '0';
 		hasNumber = true;
 	} else {
-		int err = this->index() - 1;
 		this->index(index);
 		return Result(ParseError(index, "Non-numeric character!"), out);
 	}
@@ -175,6 +174,43 @@ Result<int> StringReader :: readInt() {
 		}
 	}
 	return negate ? -out : out;
+}
+
+Result<uint32_t> StringReader :: readUInt() {
+	this->skipWhitespace();
+	uint32_t out = 0;
+	int index = this->index();
+	if (this->end()) {
+		return Result(ParseError(index, "Expected Integer, reached end!"), out);
+	}
+	bool hasNumber = false;
+	char chr = this->read();
+	if (chr >= '0' && chr <= '9') {
+		out = chr - '0';
+		hasNumber = true;
+	} else {
+		this->index(index);
+		return Result(ParseError(index, "Non-numeric character!"), out);
+	}
+
+	while(!this->end()) {
+		chr = this->peek();
+		if (chr >= '0' && chr <= '9') {
+			out = out * 10 + chr - '0';
+			hasNumber = true;
+			this->advance();
+		} else if (chr == '_') {
+			this->advance();
+			continue;
+		} else if (isWhitespace(chr) || hasNumber) {
+			break;
+		} else {
+			int err = this->index() - 1;
+			this->index(index);
+			return Result(ParseError(err, "Non-numeric character!"), out);
+		}
+	}
+	return out;
 }
 
 Result<double> StringReader :: readDouble() {

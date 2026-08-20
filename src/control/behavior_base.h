@@ -5,6 +5,7 @@ class Driver;
 
 enum BehaviorType {
     BEHAVIOR_UNDEF,
+    BEHAVIOR_DEFAULT,
     BEHAVIOR_ROTATION
 };
 
@@ -14,6 +15,7 @@ class BaseBehavior {
     BaseBehavior* previousBehavior;
 
     public:
+    bool running = false;
     virtual ~BaseBehavior();
     virtual void setup(Driver* driver, BaseBehavior* previousBehavior);
     virtual void update() {};
@@ -37,6 +39,10 @@ class BaseBehavior {
     BaseBehavior* getPreviousBehavior(bool clear);
 
     virtual std::string toString() = 0;
+
+    virtual bool isRunning() {
+        return this->running;
+    }
 
     virtual BehaviorType type() {
         return BEHAVIOR_UNDEF;

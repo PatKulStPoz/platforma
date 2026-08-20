@@ -31,22 +31,25 @@ BaseBehavior* BaseBehavior :: getPreviousBehavior(bool clear) {
 }
 
 class DefaultBehavior : public BaseBehavior {
-    bool isRunning = false;
     public:
     DefaultBehavior() {}
 
     virtual void start() {
         this->driver->setTargetLevel(this->driver->getLevel());
-        this->isRunning = true;
+        this->running = true;
     }
     
     virtual void stop() {
         this->driver->setTargetLevelForce(0);
-        this->isRunning = false;
+        this->running = false;
     }
 
     virtual void onSetLevel(uint8_t level) {
         this->setTargetLevel(level);
+    }
+
+    virtual BehaviorType type() {
+        return BEHAVIOR_DEFAULT;
     }
 
     virtual std::string toString() {
@@ -78,19 +81,26 @@ class RotateBehavior : public BaseBehavior {
     }
 
     virtual void onMainHallTick(uint32_t tick) {
+        this->updateTargetSpeed();
+            
+
+        this->rotationTick--;
+        this->driverRotationTickLast = this->driverRotationTick;
+    }
+
+    void updateTargetSpeed() {
         uint8_t value = this->driver->getLevel();
 
-        if (this->rotationTick <= 0) {
+        if (!this->isRunning()) {
             this->setTargetLevelForce(0);
+        } else if (this->rotationTick <= 0) {
+            this->setTargetLevelForce(0);
+            this->running = false;
         } else if (this->rotationTick <= 5) {
             this->setTargetLevel(value > 80 ? (value / 2 > 80 ? value : 80 ) : value);
         } else {
             this->setTargetLevel(value);
         }
-            
-
-        this->rotationTick--;
-        this->driverRotationTickLast = this->driverRotationTick;
     }
 
     virtual bool restorePrevious() {
@@ -103,6 +113,20 @@ class RotateBehavior : public BaseBehavior {
 
     virtual void onDriverTick(uint32_t tick) {
         this->driverRotationTick--;
+    }
+
+    virtual void start() {
+        this->running = true;
+        this->updateTargetSpeed();
+    }
+
+    virtual void stop() {
+        this->running = false;
+        this->updateTargetSpeed();
+    }
+
+    virtual BehaviorType type() {
+        return BEHAVIOR_ROTATION;
     }
 
     virtual std::string toString() {
@@ -128,6 +152,10 @@ class SyncedRotateBehavior : public RotateBehavior {
         }
     }
 
+    virtual bool isRunning() {
+        return this->otherDriver->getBehavior()->running && this->running;
+    }
+
     virtual std::string toString() {
         return "SyncedRotateBehavior[degrees=" + std::to_string(this->degrees) + ", rotationTick=" + std::to_string(this->rotationTick) + " ]";
     }
@@ -144,8 +172,16 @@ class SyncedForwardBehavior : public DefaultBehavior {
     }
 
     virtual void setTargetLevel(uint8_t level) {
-        int32_t val = level + (this->otherHallTickTarget - this->otherDriver->getHallTicks()) * 64;
-        BaseBehavior::setTargetLevel(val > 255 ? 255 : (val < 0 ? 0 : val));
+        if (this->otherDriver->getBehavior()->running) {
+            int32_t val = level + (this->otherHallTickTarget - this->otherDriver->getHallTicks()) * 64;
+            BaseBehavior::setTargetLevel(val > 255 ? 255 : (val < 0 ? 0 : val));
+        } else {
+            this->setTargetLevelForce(0);
+        }
+    }
+
+    virtual void update() {
+        this->setTargetLevel(this->driver->getLevel());
     }
 
     virtual void onMainHallTick(uint32_t) {

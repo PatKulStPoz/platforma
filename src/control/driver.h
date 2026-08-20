@@ -132,14 +132,14 @@ class Driver {
     }
 
     // Obsługa przerwania od pwm płytki sterującej
-    void handleDriverIn() {
+    inline void handleDriverIn() {
         this->driverTicks++;
         this->driverTicksSec++;
         this->behavior->onDriverTick(this->driverTicks);
     }
 
     // Obsługa przerwania od czujnika halla
-    void handleHallMain() {
+    inline void handleHallMain() {
         this->intrCount++;
         this->halTicks++;
         this->driverTicksPerHal = this->driverTicksSec;
@@ -154,12 +154,12 @@ class Driver {
         this->lastHall = HALL_MAIN;
     }
 
-    void handleHallFront() {
+    inline void handleHallFront() {
         this->intrCount++;
         this->lastHall = HALL_FRONT;
     }
 
-    void handleHallBack() {
+    inline void handleHallBack() {
         this->intrCount++;
         this->lastHall = HALL_BACK;
     }
@@ -167,7 +167,7 @@ class Driver {
 
     // Ustawia moc drivera
     // od 0 (0V) do 255 (3.3V) 
-    void setLevel(uint8_t value) {
+    inline void setLevel(uint8_t value) {
         if (this->value != value) {
             this->value = value;
 
@@ -175,7 +175,7 @@ class Driver {
         }
     }
 
-    uint8_t getLevel() {
+    inline uint8_t getLevel() {
         return this->value;
     }
 
@@ -230,11 +230,11 @@ class Driver {
         return this->behavior;
     }
 
-    void setTargetLevel(uint8_t value) {
+    inline void setTargetLevel(uint8_t value) {
         this->targetVal = value << 2;
     }
 
-    void setTargetLevelForce(uint8_t value) {
+    inline void setTargetLevelForce(uint8_t value) {
         this->targetVal = value << 2;
         this->currentVal = this->targetVal;
         this->updateOutputLevel(value);
@@ -262,33 +262,33 @@ class Driver {
 
 
     // Tiknięcia od sterownika na 1 halla
-    int getDriverTicksPerHal() {
+    inline int getDriverTicksPerHal() {
         return this->driverTicksPerHal;
     }
 
     //gety
-    int getHallTicks() {
+    inline int getHallTicks() {
         return this->halTicks;
     }
 
-    int getDriverTicks() {
+    inline int getDriverTicks() {
         return this->driverTicks;
     }
 
-    int getIntrCount() {
+    inline int getIntrCount() {
         return this->intrCount;
     }
 
-    HallId getLastHall() {
+    inline HallId getLastHall() {
         return this->lastHall;
     }
 
-    HallId getHallDirection() {
+    inline HallId getHallDirection() {
         return this->hallDirection;
     }
 
 
-    bool isAutomatic() {
+    inline bool isAutomatic() {
         return this->behavior->isAutomated();
     }
 

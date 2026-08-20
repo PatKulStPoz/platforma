@@ -6,6 +6,7 @@
 #include <string>
 #include <stdio.h>
 
+#include "../datastorage.h"
 #include "../util/stringreader.h"
 
 std::string strdrv(TaskedDriver driver) {
@@ -23,7 +24,6 @@ std::string strdrv(TaskedDriver driver) {
 
 bool uart_echo_enabled = true;
 
-typedef void (*Printer)(std::string);
 typedef bool (*Command)(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print);
 
 
@@ -162,12 +162,95 @@ bool cmd_uart_echo(DriverState* state, TaskedDriver driver, StringReader& argume
     return true;
 }
 
+bool cmd_config_print(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
+    if (driver & TASK_DRIVER_LEFT) {
+        print("Left Wheel:");
+        print(" hall_ticks_per_full_rotation = " + std::to_string(state->leftDriver()->getConfig().hall_sensor_ticks_per_full_rotation));
+        print(" driver_ticks_per_full_rotation = " + std::to_string(state->leftDriver()->getConfig().driver_ticks_per_full_rotation));
+        print(" brake = " + std::to_string(state->leftDriver()->getConfig().has_brake));
+    }
 
-typedef struct {
+    if (driver & TASK_DRIVER_RIGHT) {
+        print("Right Wheel:");
+        print(" hall_ticks_per_full_rotation = " + std::to_string(state->rightDriver()->getConfig().hall_sensor_ticks_per_full_rotation));
+        print(" driver_ticks_per_full_rotation = " + std::to_string(state->rightDriver()->getConfig().driver_ticks_per_full_rotation));
+        print(" brake = " + std::to_string(state->rightDriver()->getConfig().has_brake));
+    }
+
+    return true;
+}
+
+bool cmd_config_set_hall_ticks(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
+    Result<uint32_t> level = argument.readUInt();
+    if (handleErr(level, print)) return false;
+
+    if (driver & TASK_DRIVER_LEFT) {
+        state->leftDriver()->getConfig().hall_sensor_ticks_per_full_rotation = level.result();        
+    }
+
+    if (driver & TASK_DRIVER_RIGHT) {
+        state->rightDriver()->getConfig().hall_sensor_ticks_per_full_rotation = level.result();        
+    }
+    
+    print("Set hall sensor tick count for full rotation of " + strdrv(driver) + " to " + std::to_string(level.result()));
+
+    return true;
+}
+
+bool cmd_config_set_driver_ticks(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
+    Result<uint32_t> level = argument.readUInt();
+    if (handleErr(level, print)) return false;
+
+    if (driver & TASK_DRIVER_LEFT) {
+        state->leftDriver()->getConfig().driver_ticks_per_full_rotation = level.result();        
+    }
+
+    if (driver & TASK_DRIVER_RIGHT) {
+        state->rightDriver()->getConfig().driver_ticks_per_full_rotation = level.result();        
+    }
+    
+    print("Set driver tick count for full rotation of " + strdrv(driver) + " to " + std::to_string(level.result()));
+
+    return true;
+}
+
+bool cmd_config_save(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
+    if (driver & TASK_DRIVER_LEFT) {
+        save_data("left_driver", &state->leftDriver()->getConfig());
+    }
+
+    if (driver & TASK_DRIVER_RIGHT) {
+        save_data("right_driver", &state->rightDriver()->getConfig());
+    }
+
+    print("Saved configuration!");
+    cmd_config_print(state, driver, argument, print);
+
+    return true;
+}
+
+bool cmd_config_load(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
+    if (driver & TASK_DRIVER_LEFT) {
+        load_data("left_driver", &state->leftDriver()->getConfig());
+    }
+
+    if (driver & TASK_DRIVER_RIGHT) {
+        load_data("right_driver", &state->rightDriver()->getConfig());
+    }
+
+    print("Loaded configuration!");
+    cmd_config_print(state, driver, argument, print);
+
+    return true;
+}
+
+
+typedef struct CommandDef {
     std::vector<std::string> name;
     std::string help_args;
     std::string help_description;
-    Command command;
+    Command command = NULL;
+    std::vector<CommandDef> subcmd = std::vector<CommandDef>(0);
 } CommandDef;
 
 
@@ -184,21 +267,65 @@ std::vector<CommandDef> commands = {
     {{"reset"}, "", "Resets wheel's state", cmd_reset},
     {{"cleartasks"}, "", "Force-clears all the tasks", cmd_cleartasks},
     {{"esp32.reboot"}, "", "Restarts the esp32" , cmd_esp32_reboot},
-    {{"uart.echo"}, "on/off", "Toggles the uart settings", cmd_uart_echo}
+    {{"uart.echo"}, "on/off", "Toggles the uart settings", cmd_uart_echo},
+    {{"config"}, "", "Configuration...", NULL , {
+        {{"print"}, "", "Prints current config", cmd_config_print},
+        {{"set"}, "", "Set value...", NULL,  {
+            {{"hall_ticks_per_full_rotation"}, "[number]", "Number of 'ticks' from hall sensor for full rotation", cmd_config_set_hall_ticks},
+            {{"driver_ticks_per_full_rotation"}, "[number]", "Number of 'ticks' from wheel driver for full rotation", cmd_config_set_driver_ticks}
+
+        }},
+        {{"save"}, "", "Saves current configuration.", cmd_config_save},
+        {{"load"}, "", "Load previously saved configuration", cmd_config_load}
+    }}
 };
 
 
-bool cmd_help(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
-    for (CommandDef cmd : commands) {
-        print(cmd.name[0] + " " + cmd.help_args + (cmd.help_args.length() == 0 ? "" : " ") + " - " + cmd.help_description);
+void cmd_help_print(int space, std::vector<CommandDef> commands, Printer print) {
+    std::string prefix;
+    for (int i = 0; i < space; i++) {
+        prefix += " ";
     }
+    
+    for (CommandDef cmd : commands) {
+        print(prefix + cmd.name[0] + " " + cmd.help_args + (cmd.help_args.length() == 0 ? "" : " ") + " - " + cmd.help_description);
+        if (!cmd.subcmd.empty()) {
+            cmd_help_print(space + 2, cmd.subcmd, print);
+        }
+    }
+}
+
+bool cmd_help(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
+    cmd_help_print(0, commands, print);
     return true;
 }
 
 
+int parseAndExecuteInner(DriverState* state, TaskedDriver driver, Printer print, std::vector<CommandDef> commands, std::string command, StringReader reader) {
+    for (CommandDef cmd : commands) {
+        for (std::string name : cmd.name) {
+            if (name == command) {
+                if (!cmd.subcmd.empty()) {
+                    int i = reader.index();
+                    int res = parseAndExecuteInner(state, driver, print, cmd.subcmd, reader.readWordLowercase(), reader);
+                    if (res >= 0) return res;
+                    reader.index(i);
+                }
+
+                if (cmd.command != NULL) {
+                    return cmd.command(state, driver, reader, print);
+                }
+                break;
+            }
+        }
+    }
+
+    return -1;
+}
 
 bool parseAndExecute(DriverState* state, Printer print, std::string input) {
     if (input.length() < 3) {
+        print("ERROR: Invalid command '" + input + "'");
         return false;
     }
 
@@ -224,21 +351,15 @@ bool parseAndExecute(DriverState* state, Printer print, std::string input) {
 
         command = command.substr(2);
     }
-
-    for (CommandDef cmd : commands) {
-        for (std::string name : cmd.name) {
-            if (name == command) {
-                return cmd.command(state, driver, reader, print);
-            }
-        }
-    }
     
-
-    print("ERROR: Invalid command '" + command + "'");
-    return false;
+    int res = parseAndExecuteInner(state, driver, print, commands, command, reader);
+    if (res == -1) {
+        print("ERROR: Invalid command '" + command + "'");
+    }
+    return res > 0;
 }
 
-bool parseAndExecuteMulti(DriverState* state, void (*print)(std::string), std::string input) {
+bool parseAndExecuteMulti(DriverState* state, Printer print, std::string input) {
     int i = 0; 
     while (i < input.length() - 1) {
         if (input.at(0) == ' ' || input.at(0) == ';' || input.at(0) == '\n') {
