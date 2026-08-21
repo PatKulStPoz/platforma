@@ -89,7 +89,7 @@ class RotateTask : public BaseTask {
             left->start();
         }
         if (this->driver & TASK_DRIVER_RIGHT) {
-            left->pushBehavior(this->driver & TASK_DRIVER_LEFT ? new SyncedRotateBehavior(this->degrees, left) : new RotateBehavior(this->degrees));
+            right->pushBehavior(this->driver & TASK_DRIVER_LEFT ? new SyncedRotateBehavior(this->degrees, left) : new RotateBehavior(this->degrees));
             right->start();
         }
     }
@@ -100,6 +100,43 @@ class RotateTask : public BaseTask {
 
     virtual std::string toString() {
         return "RotateTask[driver=" + std::to_string(this->driver) + ", degrees=" + std::to_string(this->degrees) + "]";
+    }
+};
+
+class SetBrakeTask : public BaseTask {
+    TaskedDriver driver;
+    bool value;
+    public:
+    SetBrakeTask(bool value) {
+        this->driver = TASK_DRIVER_BOTH;
+        this->value = value;
+    }
+    SetBrakeTask(TaskedDriver driver, bool value) {
+        this->driver = driver;
+        this->value = value;
+    }
+
+    virtual void setup(Driver* left, Driver* right) {
+        if (this->driver & TASK_DRIVER_LEFT) {
+            left->setBrake(this->value);
+            if (!this->value) {
+                left->stop();
+            }
+        }
+        if (this->driver & TASK_DRIVER_RIGHT) {
+            right->setBrake(this->value);
+            if (!this->value) {
+                right->stop();
+            }
+        }
+    }
+    
+    virtual bool update(Driver* left, Driver* right, uint32_t tick) {
+        return true;
+    }
+
+    virtual std::string toString() {
+        return "SetBrake[driver=" + std::to_string(this->driver) + ", value=" + std::to_string(this->value) + "]";
     }
 };
 

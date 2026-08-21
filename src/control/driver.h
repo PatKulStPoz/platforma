@@ -6,6 +6,8 @@
 #include <math.h>
 #include "workaround.h"
 #include "behavior_base.h"
+#include "servo.h"
+#include "freertos/FreeRTOS.h"
 
 extern void intrDriverIn(void* args);
 extern void intrHallBack(void* args);
@@ -37,6 +39,11 @@ class Driver {
     const DriverPinout pinout;
     DriverConfig config = {};
 
+    SemaphoreHandle_t behaviorSemaphore = NULL;
+
+    Servo* brake;
+    bool brakeValue = false;
+
     int driverTicks = 0;
     int driverTicksSec = 0;
     int driverTicksPerHal = 0;
@@ -62,9 +69,14 @@ class Driver {
 
     public:
     Driver(const DriverPinout pinout): pinout(pinout) {
+        this->brake = new Servo(pinout.brake_out, pinout.brake_channel);
+        vSemaphoreCreateBinary( this->behaviorSemaphore );
     }
     ~Driver() {
         delete this->behavior;
+        delete this->brake;
+
+        vSemaphoreDelete(this->behaviorSemaphore);
     }
 
     inline DriverConfig& getConfig() {
@@ -112,6 +124,9 @@ class Driver {
 
         dac_oneshot_new_channel(&dacConfig, &this->dacHandle);
         dac_oneshot_output_voltage(this->dacHandle, 0);
+
+        this->brake->setup();
+        this->setBrake(false);
     }
 
 
@@ -129,13 +144,20 @@ class Driver {
 
         dac_oneshot_del_channel(this->dacHandle);
         this->dacHandle = NULL;
+
+        this->brake->destroy();
+        this->setBrake(0);
     }
 
     // Obsługa przerwania od pwm płytki sterującej
     inline void handleDriverIn() {
         this->driverTicks++;
         this->driverTicksSec++;
-        this->behavior->onDriverTick(this->driverTicks);
+        if (xSemaphoreTake(this->behaviorSemaphore, 0)) {
+            this->behavior->onDriverTick(this->driverTicks);
+            BaseType_t higherPriorityTaskWoken = pdFALSE;
+            xSemaphoreGiveFromISR(this->behaviorSemaphore, &higherPriorityTaskWoken);
+        }
     }
 
     // Obsługa przerwania od czujnika halla
@@ -144,7 +166,6 @@ class Driver {
         this->halTicks++;
         this->driverTicksPerHal = this->driverTicksSec;
         this->driverTicksSec = 0;
-        this->behavior->onMainHallTick(this->halTicks);
         if (this->lastHall == HALL_BACK) {
             this->hallDirection = HALL_FRONT;
         } else if (this->lastHall == HALL_FRONT) {
@@ -152,6 +173,12 @@ class Driver {
         } 
 
         this->lastHall = HALL_MAIN;
+
+        if (xSemaphoreTake(this->behaviorSemaphore, 0)) {
+            this->behavior->onMainHallTick(this->halTicks);
+            BaseType_t higherPriorityTaskWoken = pdFALSE;
+            xSemaphoreGiveFromISR(this->behaviorSemaphore, &higherPriorityTaskWoken);
+        }
     }
 
     inline void handleHallFront() {
@@ -192,10 +219,14 @@ class Driver {
     void reset() {
         this->stop();
         this->setLevel(0);
+        xSemaphoreTake(this->behaviorSemaphore, portMAX_DELAY);
+
         this->behavior->getPreviousBehavior(true);
         delete this->behavior;
         this->behavior = createDefaultBehavior();
         this->behavior->setup(this, NULL);
+        
+        xSemaphoreGive(this->behaviorSemaphore);
         this->setDirection(DRIVER_FORWARD);
     }
 
@@ -209,25 +240,52 @@ class Driver {
     }
 
     void pushBehavior(BaseBehavior* behavior) {
+        xSemaphoreTake(this->behaviorSemaphore, portMAX_DELAY);
         behavior->setup(this, this->behavior);
         this->behavior = behavior;
+        xSemaphoreGive(this->behaviorSemaphore);
     }
 
     void resetBehavior() {
-        delete this->behavior;
+        xSemaphoreTake(this->behaviorSemaphore, portMAX_DELAY);
+        BaseBehavior* old = this->behavior;
         this->behavior = createDefaultBehavior();
         this->behavior->setup(this, NULL);
+        delete old;
+        xSemaphoreGive(this->behaviorSemaphore);
     }
 
     void popBehavior() {
-        BaseBehavior* previous = this->behavior->getPreviousBehavior(true);
-        delete this->behavior;
-        this->behavior = behavior != NULL ? previous : createDefaultBehavior();
+        xSemaphoreTake(this->behaviorSemaphore, portMAX_DELAY);
+        BaseBehavior* old = this->behavior;
+        BaseBehavior* previous = old->getPreviousBehavior(true);
+        this->behavior = previous != NULL ? previous : createDefaultBehavior();
+        delete old;
+        xSemaphoreGive(this->behaviorSemaphore);
     }
 
+    SemaphoreHandle_t& getBehaviorSemaphore() {
+        return this->behaviorSemaphore;
+    }
 
     BaseBehavior* getBehavior() {
         return this->behavior;
+    }
+
+    std::string getBehaviorToStringWithExtraSafe() {
+        xSemaphoreTake(this->behaviorSemaphore, portMAX_DELAY);
+        std::string res = this->behavior->toStringWithExtra();
+        xSemaphoreGive(this->behaviorSemaphore);
+        return res;
+    }
+
+    inline void setBrake(bool value) {
+        this->brake->setAngle(value ? 10 : 170);
+        this->brakeValue = value;
+    }
+
+    inline bool getBrake() {
+        return this->brakeValue;
     }
 
     inline void setTargetLevel(uint8_t value) {

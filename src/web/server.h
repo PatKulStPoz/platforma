@@ -23,22 +23,6 @@ static DriverState* static_driverState = NULL;
 //websocket klienta
 static int ws_fd = -1;
 
-//lewe kolo
-static int l_driverTicksFullRotation = 0;
-static int l_halTicksFullRotation = 0;
-static int l_driverTicks = 0;
-static int l_rotationTick = 0;
-static int l_driverTicksPerHal = 0;
-static int l_halTicks = 0;
-
-//prawe kolo
-static int r_driverTicksFullRotation = 0;
-static int r_halTicksFullRotation = 0;
-static int r_driverTicks = 0;
-static int r_rotationTick = 0;
-static int r_driverTicksPerHal = 0;
-static int r_halTicks = 0;
-
 static void websocket_send_data(char* response) {
     if (ws_fd < 0)
     {
@@ -153,7 +137,7 @@ static esp_err_t websocket_handler(httpd_req_t *req)
 }
 
 //wysylanie danych za pomoza websocket
-static void websocket_send_update_data() {
+static void websocket_send_update_data(DriverState* state) {
     if (ws_fd < 0) {
         return;
     }
@@ -166,30 +150,34 @@ static void websocket_send_update_data() {
             R"rawliteral({
                 "__type": "update_state",
                 "l_driverTicksFullRotation": %d,
-                "l_halTicksFullRotation": %d,
+                "l_hallTicksFullRotation": %d,
                 "l_driverTicks": %d,
-                "l_rotationTick": %d,
-                "l_driverTicksPerHal": %d,
-                "l_halTicks": %d,
+                "l_behavior": "%s",
+                "l_driverTicksPerHall": %d,
+                "l_hallTicks": %d,
+                "l_direction": %d,
                 "r_driverTicksFullRotation": %d,
-                "r_halTicksFullRotation": %d,
+                "r_hallTicksFullRotation": %d,
                 "r_driverTicks": %d,
-                "r_rotationTick": %d,
-                "r_driverTicksPerHal": %d,
-                "r_halTicks": %d
+                "r_behavior": "%s",
+                "r_driverTicksPerHall": %d,
+                "r_hallTicks": %d,
+                "r_direction": %d
             })rawliteral",
-            l_driverTicksFullRotation,
-            l_halTicksFullRotation,
-            l_driverTicks,
-            l_rotationTick,
-            l_driverTicksPerHal,
-            l_halTicks,
-            r_driverTicksFullRotation,
-            r_halTicksFullRotation,
-            r_driverTicks,
-            r_rotationTick,
-            r_driverTicksPerHal,
-            r_halTicks
+            state->leftDriver()->getConfig().driver_ticks_per_full_rotation,
+            state->leftDriver()->getConfig().hall_sensor_ticks_per_full_rotation,
+            state->leftDriver()->getDriverTicks(),
+            state->leftDriver()->getBehaviorToStringWithExtraSafe().c_str(),
+            state->leftDriver()->getDriverTicksPerHal(),
+            state->leftDriver()->getHallTicks(),
+            state->leftDriver()->getHallDirection(),
+            state->rightDriver()->getConfig().driver_ticks_per_full_rotation,
+            state->rightDriver()->getConfig().hall_sensor_ticks_per_full_rotation,
+            state->rightDriver()->getDriverTicks(),
+            state->rightDriver()->getBehaviorToStringWithExtraSafe().c_str(),
+            state->rightDriver()->getDriverTicksPerHal(),
+            state->rightDriver()->getHallTicks(),
+            state->rightDriver()->getHallDirection()
         );
 
     websocket_send_data(response);
@@ -199,6 +187,7 @@ static void websocket_send_update_data() {
 static httpd_handle_t start_web_server(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.stack_size = 4096 * 3 / 2,
     config.max_uri_handlers = PAGE_COUNT + 8  ;
     httpd_handle_t server = nullptr;
     if (httpd_start(&server, &config) == ESP_OK)

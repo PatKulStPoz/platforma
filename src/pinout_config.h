@@ -13,6 +13,7 @@ typedef struct {
     dac_channel_t control_channel;
     gpio_num_t direction_out;
     gpio_num_t brake_out;
+    ledc_channel_t brake_channel;
     gpio_num_t driver_in;
     gpio_num_t hall_back_in;
     gpio_num_t hall_main_in;
@@ -29,7 +30,8 @@ typedef struct {
 DriverPinout LEFT_DRIVER_PINS = {
     .control_channel = DAC_CHAN_0, 
     .direction_out = GPIO_NUM_13, 
-    .brake_out = GPIO_NUM_12, 
+    .brake_out = GPIO_NUM_12,
+    .brake_channel = LEDC_CHANNEL_0,
     .driver_in = GPIO_NUM_27, 
     .hall_back_in = GPIO_NUM_34, 
     .hall_main_in = GPIO_NUM_35, 
@@ -39,7 +41,8 @@ DriverPinout LEFT_DRIVER_PINS = {
 DriverPinout RIGHT_DRIVER_PINS = {
     .control_channel = DAC_CHAN_1, 
     .direction_out = GPIO_NUM_15, 
-    .brake_out = GPIO_NUM_2, 
+    .brake_out = GPIO_NUM_2,
+    .brake_channel = LEDC_CHANNEL_1,
     .driver_in = GPIO_NUM_4, 
     .hall_back_in = GPIO_NUM_5, 
     .hall_main_in = GPIO_NUM_17, 

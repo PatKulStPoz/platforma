@@ -7,6 +7,7 @@
 #include "freertos/task.h"
 #include "control/driver.h"
 #include "control/command.h"
+#include "control/servo.h"
 #include "web/main.h"
 #include "state.h"
 #include <inttypes.h>
@@ -14,6 +15,8 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "datastorage.h"
+
+
 // APP MAIN
 extern "C" void app_main(void) {
     //Initialize NVS
@@ -23,6 +26,8 @@ extern "C" void app_main(void) {
       ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+
+    setup_servo();
 
     gpio_install_isr_service(0);
 

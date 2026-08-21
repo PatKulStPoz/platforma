@@ -87,6 +87,17 @@ bool cmd_setdirection(DriverState* state, TaskedDriver driver, StringReader& arg
     return true;
 }
 
+
+bool cmd_setbrake(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
+    auto str = argument.readWordLowercase();
+
+    bool val = str.length() == 0 ? !uart_echo_enabled : (str.at(0) == 't' || str.at(0) == '1' || str == "on");
+
+    print("Added set brake of " + strdrv(driver) + " to " + std::to_string(val) + " task");
+    state->pushTask(new SetBrakeTask(driver, val));
+    return true;
+}
+
 bool cmd_rotate(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
     auto level = argument.readInt();
 
@@ -260,6 +271,7 @@ std::vector<CommandDef> commands = {
     {{"stop"}, "", "Stops the wheel", cmd_stop},
     {{"setlevel", "setlvl"}, "[decimal, <0;1>]", "Sets the output/speed of the wheel", cmd_setlevel},
     {{"setdirection", "setdir"}, "forward/backward", "Sets the direction of the wheel", cmd_setdirection},
+    {{"setbrake", "brake"}, "forward/backward", "Sets the direction of the wheel", cmd_setdirection},
     {{"behavior", "bh"}, "default/sync/clear", "Sets the current behavior", cmd_behavior}, 
     {{"rotate", "rot", "r"}, "[degrees]", "Rotates the wheel by given angle", cmd_rotate},
     {{"wait", "w"}, "[seconds]", "Waits X seconds before executing next task", cmd_wait},

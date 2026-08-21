@@ -12,7 +12,7 @@ enum BehaviorType {
 class BaseBehavior {
     protected:
     Driver* driver;
-    BaseBehavior* previousBehavior;
+    BaseBehavior* previousBehavior = NULL;
 
     public:
     bool running = false;
@@ -39,6 +39,10 @@ class BaseBehavior {
     BaseBehavior* getPreviousBehavior(bool clear);
 
     virtual std::string toString() = 0;
+
+    virtual std::string toStringWithExtra() {
+        return this->toString() + " / running=" + std::to_string(this->isRunning()) + ", running_self=" + std::to_string(this->running);
+    }
 
     virtual bool isRunning() {
         return this->running;
