@@ -162,7 +162,8 @@ static void websocket_send_update_data(DriverState* state) {
                 "r_behavior": "%s",
                 "r_driverTicksPerHall": %d,
                 "r_hallTicks": %d,
-                "r_direction": %d
+                "r_direction": %d,
+                "battery_percentage": %d
             })rawliteral",
             state->leftDriver()->getConfig().driver_ticks_per_full_rotation,
             state->leftDriver()->getConfig().hall_sensor_ticks_per_full_rotation,
@@ -177,7 +178,8 @@ static void websocket_send_update_data(DriverState* state) {
             state->rightDriver()->getBehaviorToStringWithExtraSafe().c_str(),
             state->rightDriver()->getDriverTicksPerHal(),
             state->rightDriver()->getHallTicks(),
-            state->rightDriver()->getHallDirection()
+            state->rightDriver()->getHallDirection(),
+            state->getBatteryPercentage()
         );
 
     websocket_send_data(response);

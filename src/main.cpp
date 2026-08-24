@@ -2,6 +2,9 @@
 #include <string.h>
 
 #include "driver/gpio.h"
+#include "esp_adc/adc_oneshot.h"
+#include "esp_adc/adc_cali.h"
+#include "esp_adc/adc_cali_scheme.h"
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -15,7 +18,7 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "datastorage.h"
-
+#include "util/adcreader.h"
 
 // APP MAIN
 extern "C" void app_main(void) {
@@ -29,11 +32,19 @@ extern "C" void app_main(void) {
 
     setup_servo();
 
-    gpio_install_isr_service(0);
+    //gpio_install_isr_service(0);
+
+    AdcReader* battery = new AdcReader(STATUS_BATTERY_READ_CHANNEL, ADC_ATTEN_DB_12);
 
     gpio_output_enable(STATUS_LED);
 
-    DriverState* state = new DriverState();
+    DriverState* state = new DriverState({
+        .wifi_ssid = "Platforma_Hotspot",
+        .wifi_password = "Platforma2026",
+        .wifi_ap = false,
+    });
+
+    load_data("main", &state->getConfig());
 
     Driver* left = state->leftDriver();
     Driver* right = state->rightDriver();
@@ -73,6 +84,18 @@ extern "C" void app_main(void) {
         // Aktualizują stan sterownika
         left->update();
         right->update();
+
+        gpio_set_level(STATUS_KOGUT, left->isRunning() || right->isRunning());
+
+
+        if (tick % 100 == 0) {
+            uint32_t val = 0;
+            for (int i = 0; i < 10; i++) {
+                val += battery->readMilliVolt();
+            }
+
+            state->setBatteryVoltage(val * 584 / 1000);
+        }
 
         //if (tick % 10 == 0) {
         //    printf("[DEBUG] Hal: %d, Driver: %d, Time: %" PRIu32 " ms, Last: %d, Dir: %d, Intr %d\n", right->getHalTicks(), right->getDriverTicksPerHal(), tick - tickOld, 

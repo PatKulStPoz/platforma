@@ -54,6 +54,7 @@ class Driver {
     uint8_t value = 0;
     uint16_t currentVal = 0;
     uint16_t targetVal = 0;
+    uint8_t currentActialOutput = 0;
 
     dac_oneshot_handle_t dacHandle;
 
@@ -61,15 +62,18 @@ class Driver {
     HallId hallDirection = HALL_NONE;
     HallId previousHallDirection = HALL_NONE;
 
-    BaseBehavior* behavior = createDefaultBehavior();
+    BaseBehavior* behavior;
 
     void updateOutputLevel(uint8_t value) {
         dac_oneshot_output_voltage(this->dacHandle, value);
+        this->currentActialOutput = value;
     }
 
     public:
     Driver(const DriverPinout pinout): pinout(pinout) {
         this->brake = new Servo(pinout.brake_out, pinout.brake_channel);
+        this->behavior = createDefaultBehavior();
+        this->behavior->setup(this, NULL);
         vSemaphoreCreateBinary( this->behaviorSemaphore );
     }
     ~Driver() {
@@ -348,6 +352,10 @@ class Driver {
 
     inline bool isAutomatic() {
         return this->behavior->isAutomated();
+    }
+
+    inline bool isRunning() {
+        return this->behavior->isRunning();
     }
 
     // Zeruje liczniki liczące.

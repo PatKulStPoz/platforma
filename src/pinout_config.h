@@ -8,6 +8,11 @@
 
 #define STATUS_LED GPIO_NUM_14
 #define STATUS_BATTERY_READ GPIO_NUM_36
+#define STATUS_BATTERY_READ_CHANNEL ADC_CHANNEL_0
+#define BATTERY_MIN_VOLTAGE 3500 * 4
+#define BATTERY_MAX_VOLTAGE 4300 * 4
+
+#define STATUS_KOGUT GPIO_NUM_33
 
 typedef struct {
     dac_channel_t control_channel;
@@ -28,7 +33,7 @@ typedef struct {
 
 
 DriverPinout LEFT_DRIVER_PINS = {
-    .control_channel = DAC_CHAN_0, 
+    .control_channel = DAC_CHAN_1, 
     .direction_out = GPIO_NUM_13, 
     .brake_out = GPIO_NUM_12,
     .brake_channel = LEDC_CHANNEL_0,
@@ -39,7 +44,7 @@ DriverPinout LEFT_DRIVER_PINS = {
 };
 
 DriverPinout RIGHT_DRIVER_PINS = {
-    .control_channel = DAC_CHAN_1, 
+    .control_channel = DAC_CHAN_0, 
     .direction_out = GPIO_NUM_15, 
     .brake_out = GPIO_NUM_2,
     .brake_channel = LEDC_CHANNEL_1,

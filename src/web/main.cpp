@@ -34,10 +34,10 @@ void web_setup(DriverState* state) {
     //Initialize NVS
 
     ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
-    if (AP_WIFI_ENABLED) {
-        wifi_init_softap();
-    } else if (CONN_WIFI_ENABLED) {
-        wifi_init_sta();
+    if (strlen(state->getConfig().wifi_ssid) && state->getConfig().wifi_ap) {
+        wifi_init_softap(state->getConfig().wifi_ssid, state->getConfig().wifi_password);
+    } else if (strlen(state->getConfig().wifi_ssid)) {
+        wifi_init_sta(state->getConfig().wifi_ssid, state->getConfig().wifi_password);
     }
 
     // Start web server
@@ -54,22 +54,22 @@ void web_setup(DriverState* state) {
             "Web Server started!"
         );
 
-        if (AP_WIFI_ENABLED) {
+        if (state->getConfig().wifi_ap) {
             ESP_LOGI(
                 TAG,
                 "Connect to WiFi: %s",
-                AP_WIFI_SSID
+                state->getConfig().wifi_ssid
             );
             ESP_LOGI(
                 TAG,
                 "Password: %s",
-                AP_WIFI_PASS
+                state->getConfig().wifi_password
             );
         }
         ESP_LOGI(
             TAG,
             "Open: http://%s.local",
-            MDNS_HOSTNAME
+            state->getConfig().hostname
         );
         ESP_LOGI(
             TAG,
@@ -81,13 +81,13 @@ void web_setup(DriverState* state) {
 
     ESP_ERROR_CHECK(mdns_init());
     //set mDNS hostname (required if you want to advertise services)
-    ESP_ERROR_CHECK(mdns_hostname_set(MDNS_HOSTNAME));
-    ESP_LOGI(TAG, "mdns hostname set to: [%s]", MDNS_HOSTNAME);
+    ESP_ERROR_CHECK(mdns_hostname_set(state->getConfig().hostname));
+    ESP_LOGI(TAG, "mdns hostname set to: [%s]", state->getConfig().hostname);
     //set default mDNS instance name
     ESP_ERROR_CHECK(mdns_instance_name_set(MDNS_NAME));
 
     mdns_service_add("ESP32-WebServer", "_http", "_tcp", 80, NULL, 0);
-    mdns_service_add("ESP32-WebServer", "_text", "_tcp", 2000, NULL, 0);
+    mdns_service_add("SimProto", "_telnet", "_tcp", 2000, NULL, 0);
 
     xTaskCreate(websocket_task, "websocket_task", 4096, state, 5, nullptr);
 }

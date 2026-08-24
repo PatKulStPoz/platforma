@@ -49,7 +49,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
-void wifi_init_softap(void) {
+void wifi_init_softap(char* wifi_ssid, char* wifi_password) {
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     esp_netif_create_default_wifi_ap();
@@ -67,25 +67,24 @@ void wifi_init_softap(void) {
 
     strncpy(
         reinterpret_cast<char *>(wifi_config.ap.ssid),
-        AP_WIFI_SSID,
+        wifi_ssid,
         sizeof(wifi_config.ap.ssid) - 1
     );
 
     strncpy(
         reinterpret_cast<char *>(wifi_config.ap.password),
-        AP_WIFI_PASS,
+        wifi_password,
         sizeof(wifi_config.ap.password) - 1
     );
 
-    wifi_config.ap.ssid_len =
-        strlen(AP_WIFI_SSID);
+    wifi_config.ap.ssid_len = strlen(wifi_ssid);
 
     wifi_config.ap.channel = 1;
     wifi_config.ap.max_connection = 4;
     wifi_config.ap.authmode = WIFI_AUTH_WPA2_PSK;
 
 
-    if (strlen(AP_WIFI_PASS) == 0) {
+    if (strlen(wifi_password) == 0) {
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
     }
 
@@ -94,10 +93,10 @@ void wifi_init_softap(void) {
     ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(TAG, "wifi_init_softap finished. SSID:%s password:%s channel:%d",
-             AP_WIFI_SSID, AP_WIFI_PASS, EXAMPLE_ESP_WIFI_CHANNEL);
+             wifi_ssid, wifi_password, EXAMPLE_ESP_WIFI_CHANNEL);
 }
 
-void wifi_init_sta(void) {
+void wifi_init_sta(char* wifi_ssid, char* wifi_password) {
     s_wifi_event_group = xEventGroupCreate();
 
     ESP_ERROR_CHECK(esp_netif_init());
@@ -125,17 +124,17 @@ void wifi_init_sta(void) {
 
     strncpy(
         reinterpret_cast<char *>(wifi_config.sta.ssid),
-        CONN_WIFI_SSID,
+        wifi_ssid,
         sizeof(wifi_config.sta.ssid) - 1
     );
 
     strncpy(
         reinterpret_cast<char *>(wifi_config.sta.password),
-        CONN_WIFI_PASS,
+        wifi_password,
         sizeof(wifi_config.sta.password) - 1
     );
 
-	wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
+	wifi_config.sta.threshold.authmode = strlen(wifi_password) == 0 ? WIFI_AUTH_OPEN : WIFI_AUTH_WPA2_PSK;
 
     wifi_config.sta.pmf_cfg.capable = true;
     wifi_config.sta.pmf_cfg.required = false;
@@ -158,10 +157,10 @@ void wifi_init_sta(void) {
      * happened. */
     if (bits & WIFI_CONNECTED_BIT) {
         ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
-                 CONN_WIFI_SSID, CONN_WIFI_PASS);
+                 wifi_ssid, wifi_password);
     } else if (bits & WIFI_FAIL_BIT) {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
-                 CONN_WIFI_SSID, CONN_WIFI_PASS);
+                 wifi_ssid, wifi_password);
     } else {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }
@@ -170,52 +169,4 @@ void wifi_init_sta(void) {
     ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
     ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
     vEventGroupDelete(s_wifi_event_group);
-}
-
-
-void wifi_init(void) {
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
-                                                        ESP_EVENT_ANY_ID,
-                                                        &wifi_event_handler,
-                                                        NULL,
-                                                        NULL));
-
-    wifi_config_t wifi_config{};
-
-    strncpy(
-        reinterpret_cast<char *>(wifi_config.ap.ssid),
-        AP_WIFI_SSID,
-        sizeof(wifi_config.ap.ssid) - 1
-    );
-
-    strncpy(
-        reinterpret_cast<char *>(wifi_config.ap.password),
-        AP_WIFI_PASS,
-        sizeof(wifi_config.ap.password) - 1
-    );
-
-    wifi_config.ap.ssid_len =
-        strlen(AP_WIFI_SSID);
-
-    wifi_config.ap.channel = 1;
-    wifi_config.ap.max_connection = 4;
-    wifi_config.ap.authmode = WIFI_AUTH_WPA2_PSK;
-
-
-    if (strlen(AP_WIFI_PASS) == 0) {
-        wifi_config.ap.authmode = WIFI_AUTH_OPEN;
-    }
-
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
-
-    ESP_LOGI(TAG, "wifi_init_softap finished. SSID:%s password:%s channel:%d",
-             AP_WIFI_SSID, AP_WIFI_PASS, EXAMPLE_ESP_WIFI_CHANNEL);
 }

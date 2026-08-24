@@ -40,14 +40,14 @@ bool handleErr(Result<T> res, Printer print) {
 bool cmd_help(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print);
 
 bool cmd_start(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
-    state->pushTask(new StartTask(driver));
+    state->getTasks()->pushTask(new StartTask(driver));
     print("Added start " + strdrv(driver) + " task");
     return true;
 }
 
 
 bool cmd_stop(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
-    state->pushTask(new StopTask(driver));
+    state->getTasks()->pushTask(new StopTask(driver));
     print("Added stop " + strdrv(driver) + " task");
     return true;
 }
@@ -71,7 +71,7 @@ bool cmd_setlevel(DriverState* state, TaskedDriver driver, StringReader& argumen
         if (driver & TASK_DRIVER_RIGHT) state->rightDriver()->setLevel(level.result() * 255);
     } else {
         print("Added set level of " + strdrv(driver) + " to " + std::to_string(level.result()) + " task");
-        state->pushTask(new SetLevelTask(driver, (int) (level.result() * 255) ));
+        state->getTasks()->pushTask(new SetLevelTask(driver, (int) (level.result() * 255) ));
     }
     return true;
 }
@@ -83,7 +83,7 @@ bool cmd_setdirection(DriverState* state, TaskedDriver driver, StringReader& arg
     DriverDirection direction = !dir.empty() && (dir.at(0) == 'b') ? DRIVER_BACKWARDS : DRIVER_FORWARD;
 
     print("Added direction of " + strdrv(driver) + " to " + std::to_string(direction) + " task");
-    state->pushTask(new SetDirectionTask(driver, direction));
+    state->getTasks()->pushTask(new SetDirectionTask(driver, direction));
     return true;
 }
 
@@ -94,7 +94,7 @@ bool cmd_setbrake(DriverState* state, TaskedDriver driver, StringReader& argumen
     bool val = str.length() == 0 ? !uart_echo_enabled : (str.at(0) == 't' || str.at(0) == '1' || str == "on");
 
     print("Added set brake of " + strdrv(driver) + " to " + std::to_string(val) + " task");
-    state->pushTask(new SetBrakeTask(driver, val));
+    state->getTasks()->pushTask(new SetBrakeTask(driver, val));
     return true;
 }
 
@@ -108,7 +108,7 @@ bool cmd_rotate(DriverState* state, TaskedDriver driver, StringReader& argument,
     }
 
     print("Added rotate " + strdrv(driver) + " " + std::to_string(level.result()) + " degrees task");
-    state->pushTask(new RotateTask(driver, level.result()));
+    state->getTasks()->pushTask(new RotateTask(driver, level.result()));
     return true;
 }
 
@@ -118,37 +118,37 @@ bool cmd_wait(DriverState* state, TaskedDriver driver, StringReader& argument, P
     if (handleErr(level, print)) return false;
     print("Added wait " + std::to_string(level.result()) + " seconds task");
 
-    state->pushTask(new WaitTicksTask(level.result() * 100));
+    state->getTasks()->pushTask(new WaitTicksTask(level.result() * 100));
     return true;
 }
 
 bool cmd_wait_for(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
     print("Added wait until " + strdrv(driver) + " finishes task");
-    state->pushTask(new WaitForFinishedTask(driver));
+    state->getTasks()->pushTask(new WaitForFinishedTask(driver));
     return true;
 }
 
 bool cmd_reset(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
     print("Added reset " + strdrv(driver) + " task");
-    state->pushTask(new ResetTask(driver));
+    state->getTasks()->pushTask(new ResetTask(driver));
     return true;
 }
 
 bool cmd_cleartasks(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
     print("Cleared all tasks");
-    state->clearTasks();
+    state->getTasks()->clearTasks();
     return true;
 }
 
 bool cmd_behavior(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
     std::string str = argument.readWordLowercase();
-    state->pushTask(new PopBehaviorTask(driver));
+    state->getTasks()->pushTask(new PopBehaviorTask(driver));
 
     if (str == "clear" || str == "default") {
-        state->pushTask(new ResetBehaviorTask(driver));
+        state->getTasks()->pushTask(new ResetBehaviorTask(driver));
         print("Added clear behavior " + strdrv(driver) + " task");
     } else if (str == "sync") {
-        state->pushTask(new SetSyncBehaviorTask(driver));
+        state->getTasks()->pushTask(new SetSyncBehaviorTask(driver));
         print("Added set sync behavior " + strdrv(driver) + " task");
     } else {
         print("Invalid argument");
@@ -173,6 +173,11 @@ bool cmd_uart_echo(DriverState* state, TaskedDriver driver, StringReader& argume
     return true;
 }
 
+bool cmd_battery_status(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
+    print("Battery: " + std::to_string(state->getBatteryPercentage()) + "% (" + std::to_string(state->getBatteryVoltage()) + " mV)");
+    return true;
+}
+
 bool cmd_config_print(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
     if (driver & TASK_DRIVER_LEFT) {
         print("Left Wheel:");
@@ -187,6 +192,12 @@ bool cmd_config_print(DriverState* state, TaskedDriver driver, StringReader& arg
         print(" driver_ticks_per_full_rotation = " + std::to_string(state->rightDriver()->getConfig().driver_ticks_per_full_rotation));
         print(" brake = " + std::to_string(state->rightDriver()->getConfig().has_brake));
     }
+
+    print("General:");
+    print(" wifi_ssid = " + std::string(state->getConfig().wifi_ssid));
+    print(" wifi_password = " + std::string(state->getConfig().wifi_password));
+    print(" wifi_ap = " + std::to_string(state->getConfig().wifi_ap));
+    print(" hostname = " + std::string(state->getConfig().hostname));
 
     return true;
 }
@@ -225,6 +236,47 @@ bool cmd_config_set_driver_ticks(DriverState* state, TaskedDriver driver, String
     return true;
 }
 
+bool cmd_config_set_wifi_ssid(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
+    std::string str = argument.readGreedyString();
+    strcpy(state->getConfig().wifi_ssid, str.c_str());
+    
+    print("Set connecting wifi ssid to '" + str + "'");
+    print("Note: To connect restart the device, which you can do with esp32.reboot command");
+
+    return true;
+}
+
+bool cmd_config_set_wifi_password(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
+    std::string str = argument.readGreedyString();
+    strcpy(state->getConfig().wifi_password, str.c_str());
+
+    print("Set connecting wifi password to '" + str + "'");
+    print("Note: To connect restart the device, which you can do with esp32.reboot command");
+
+    return true;
+}
+
+bool cmd_config_set_wifi_ap(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
+    Result<bool> val = argument.readBool();
+    if (handleErr(val, print)) return false;
+
+    print("Set wifi mode to " + std::string(val.result() ? "access point" : "station"));
+    print("Note: To change the mode, restart the device, which you can do with esp32.reboot command");
+
+    return true;
+}
+
+bool cmd_config_set_hostname(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
+    std::string str = argument.readGreedyString();
+    strcpy(state->getConfig().hostname, str.c_str());
+
+    print("Set hostname to '" + str + "'");
+    print("Note: To update it, restart the device, which you can do with esp32.reboot command");
+
+    return true;
+}
+
+
 bool cmd_config_save(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
     if (driver & TASK_DRIVER_LEFT) {
         save_data("left_driver", &state->leftDriver()->getConfig());
@@ -233,6 +285,8 @@ bool cmd_config_save(DriverState* state, TaskedDriver driver, StringReader& argu
     if (driver & TASK_DRIVER_RIGHT) {
         save_data("right_driver", &state->rightDriver()->getConfig());
     }
+
+    save_data("main", &state->getConfig());
 
     print("Saved configuration!");
     cmd_config_print(state, driver, argument, print);
@@ -248,6 +302,8 @@ bool cmd_config_load(DriverState* state, TaskedDriver driver, StringReader& argu
     if (driver & TASK_DRIVER_RIGHT) {
         load_data("right_driver", &state->rightDriver()->getConfig());
     }
+
+    load_data("main", &state->getConfig());
 
     print("Loaded configuration!");
     cmd_config_print(state, driver, argument, print);
@@ -271,7 +327,7 @@ std::vector<CommandDef> commands = {
     {{"stop"}, "", "Stops the wheel", cmd_stop},
     {{"setlevel", "setlvl"}, "[decimal, <0;1>]", "Sets the output/speed of the wheel", cmd_setlevel},
     {{"setdirection", "setdir"}, "forward/backward", "Sets the direction of the wheel", cmd_setdirection},
-    {{"setbrake", "brake"}, "forward/backward", "Sets the direction of the wheel", cmd_setdirection},
+    {{"setbrake", "brake"}, "[bool]", "Sets the direction of the wheel", cmd_setdirection},
     {{"behavior", "bh"}, "default/sync/clear", "Sets the current behavior", cmd_behavior}, 
     {{"rotate", "rot", "r"}, "[degrees]", "Rotates the wheel by given angle", cmd_rotate},
     {{"wait", "w"}, "[seconds]", "Waits X seconds before executing next task", cmd_wait},
@@ -280,11 +336,16 @@ std::vector<CommandDef> commands = {
     {{"cleartasks"}, "", "Force-clears all the tasks", cmd_cleartasks},
     {{"esp32.reboot"}, "", "Restarts the esp32" , cmd_esp32_reboot},
     {{"uart.echo"}, "on/off", "Toggles the uart settings", cmd_uart_echo},
+    {{"battery.status"}, "", "Prints the battery status", cmd_battery_status},
     {{"config"}, "", "Configuration...", NULL , {
         {{"print"}, "", "Prints current config", cmd_config_print},
         {{"set"}, "", "Set value...", NULL,  {
-            {{"hall_ticks_per_full_rotation"}, "[number]", "Number of 'ticks' from hall sensor for full rotation", cmd_config_set_hall_ticks},
-            {{"driver_ticks_per_full_rotation"}, "[number]", "Number of 'ticks' from wheel driver for full rotation", cmd_config_set_driver_ticks}
+            {{"hall_ticks_per_full_rotation", "hall_count", "hall", "hall_ticks"}, "[number]", "Number of 'ticks' from hall sensor for full rotation", cmd_config_set_hall_ticks},
+            {{"driver_ticks_per_full_rotation", "driver_count", "driver", "driver_ticks"}, "[number]", "Number of 'ticks' from wheel driver for full rotation", cmd_config_set_driver_ticks},
+            {{"wifi_ssid"}, "[ssid]", "Sets ssid of wifi to connect to", cmd_config_set_wifi_ssid},
+            {{"wifi_password"}, "[password/empty]", "Sets password of wifi to connect to. Setting it to empty skips password auth", cmd_config_set_wifi_password},
+            {{"wifi_ap"}, "[bool]", "Toggles the access point wifi mode", cmd_config_set_wifi_ap},
+            {{"hostname"}, "[hostname]", "Set's the hostname of the device", cmd_config_set_hostname},
 
         }},
         {{"save"}, "", "Saves current configuration.", cmd_config_save},
@@ -423,11 +484,19 @@ void uartcmd_task(void *arg) {
                 break;
             }
 
-            if (c == '\b') {
+            if (c == '\b' || c == 0x7F) {
                 if (i > 0) {
                     i--;
-                    if (uart_echo_enabled) putchar(c);
+                    if (uart_echo_enabled) {
+                        putchar('\b');
+                        putchar(' ');
+                        putchar('\b');
+                    }
                 }
+                continue;
+            }
+
+            if (c < 32) {
                 continue;
             }
 

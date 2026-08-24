@@ -272,5 +272,5 @@ Result<bool> StringReader :: readBool() {
 		return Result(ParseError(this->index(), "Expected Bool, reached end!"), false);
 	}
 
-	return word == "true" || word == "yes" || word == "1";
+	return word == "true" || word == "yes" || word == "t" || word == "y" || word == "1";
 }

@@ -160,6 +160,7 @@ static const char* file_page_html = R"raw(
 <body>
     <div class="box" id="header">
         <span id="title">Platforma Jeżdząca</span>
+        <span id="websocket">Bateria: <span id="state:battery_percentage">???</span>%</span>
         <span id="websocket">WebSocket: <span id="ws-status">Łączenie...</span></span>
     </div>
     <div id="center_holder">

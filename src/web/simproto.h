@@ -88,7 +88,7 @@ typedef struct {
 
 static void tcp_server_task(void *pvParameters) {
     static char rx_buffer[128];
-    static const char *TAG = "text-over-tpc";
+    static const char *TAG = "simproto";
     SemaphoreHandle_t *server_ready = static_cast<TPCTaskInput* >(pvParameters)->server_ready;
     DriverState* state = static_cast<TPCTaskInput* >(pvParameters)->state;
     pvParameters = NULL;
@@ -236,7 +236,7 @@ static void tcp_server_task(void *pvParameters) {
                         index[i] = 0;
                     }
 
-                    ESP_LOGI(TAG, "[sock=%d]: Received %.*s", sock[i], len, rx_buffer);
+                    //ESP_LOGI(TAG, "[sock=%d]: Received %.*s", sock[i], len, rx_buffer);
                 } // one client's socket
             } // for all sockets
 
