@@ -83,22 +83,13 @@ static esp_err_t websocket_handler(httpd_req_t *req)
     //ESP_LOGI(TAG, "method = %d", req->method);
     //ESP_LOGI(TAG, "HTTP_GET = %d", HTTP_GET);
     ws_fd = httpd_req_to_sockfd(req);
-    
-    ESP_LOGI(TAG, "fd = %d", ws_fd);
 
 
-    //ESP_LOGI(TAG, "=== WEBSOCKET FRAME ===");
 
     httpd_ws_frame_t ws_pkt = {};
     memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
     ws_pkt.type = HTTPD_WS_TYPE_TEXT;
     esp_err_t ret = httpd_ws_recv_frame(req, &ws_pkt, 0);
-
-    ESP_LOGI(TAG,
-             "recv_frame: ret=%s, len=%d, type=%d",
-             esp_err_to_name(ret),
-             ws_pkt.len,
-             ws_pkt.type);
 
     if (ret != ESP_OK)
         return ret;
@@ -115,21 +106,15 @@ static esp_err_t websocket_handler(httpd_req_t *req)
             ws_pkt.len
         );
 
-        if (ret == ESP_OK)
-        {
+        if (ret == ESP_OK) {
             buf[ws_pkt.len] = '\0';
 
-            ESP_LOGI(TAG,
-                     "Received: %s",
-                     reinterpret_cast<char *>(buf));
+            std::string str = reinterpret_cast<char*>(buf);
+
+            if (str.starts_with("EXEC>")) {
+                parseAndExecuteMulti(static_driverState, websocket_print, str.substr(5));
+            }
         }
-
-        std::string str = reinterpret_cast<char*>(buf);
-
-        if (str.starts_with("EXEC>")) {
-            parseAndExecuteMulti(static_driverState, websocket_print, str.substr(5));
-        }
-
         delete[] buf;
     }
 
@@ -142,7 +127,7 @@ static void websocket_send_update_data(DriverState* state) {
         return;
     }
 
-    char response[1024];
+    char response[2000];
 
     snprintf(
             response,
@@ -151,18 +136,30 @@ static void websocket_send_update_data(DriverState* state) {
                 "__type": "update_state",
                 "l_driverTicksFullRotation": %d,
                 "l_hallTicksFullRotation": %d,
-                "l_driverTicks": %d,
+                "l_driverTicks": %ld,
                 "l_behavior": "%s",
                 "l_driverTicksPerHall": %d,
-                "l_hallTicks": %d,
+                "l_hallTicks": %ld,
                 "l_direction": %d,
+                "l_hall_tick_time": %lu,
+                "l_running": %d,
+                "l_level": %d,
+                "l_current_level": %d,
+                "l_target_level": %d,
+                "l_target_direction": %d,
                 "r_driverTicksFullRotation": %d,
                 "r_hallTicksFullRotation": %d,
-                "r_driverTicks": %d,
+                "r_driverTicks": %ld,
                 "r_behavior": "%s",
                 "r_driverTicksPerHall": %d,
-                "r_hallTicks": %d,
+                "r_hallTicks": %ld,
                 "r_direction": %d,
+                "r_hall_tick_time": %lu,
+                "r_running": %d,
+                "r_level": %d,
+                "r_current_level": %d,
+                "r_target_level": %d,
+                "r_target_direction": %d,
                 "battery_percentage": %d
             })rawliteral",
             state->leftDriver()->getConfig().driver_ticks_per_full_rotation,
@@ -172,6 +169,12 @@ static void websocket_send_update_data(DriverState* state) {
             state->leftDriver()->getDriverTicksPerHal(),
             state->leftDriver()->getHallTicks(),
             state->leftDriver()->getHallDirection(),
+            state->leftDriver()->getHallTickTime(),
+            state->leftDriver()->isRunning(),
+            state->leftDriver()->getLevel(),
+            state->leftDriver()->getTargetLevel(),
+            state->leftDriver()->getCurrentLevel(),
+            state->leftDriver()->getDirection(),
             state->rightDriver()->getConfig().driver_ticks_per_full_rotation,
             state->rightDriver()->getConfig().hall_sensor_ticks_per_full_rotation,
             state->rightDriver()->getDriverTicks(),
@@ -179,6 +182,13 @@ static void websocket_send_update_data(DriverState* state) {
             state->rightDriver()->getDriverTicksPerHal(),
             state->rightDriver()->getHallTicks(),
             state->rightDriver()->getHallDirection(),
+            state->rightDriver()->getHallTickTime(),
+            state->rightDriver()->isRunning(),
+            state->rightDriver()->getLevel(),
+            state->rightDriver()->getTargetLevel(),
+            state->rightDriver()->getCurrentLevel(),
+            state->rightDriver()->getDirection(),
+
             state->getBatteryPercentage()
         );
 

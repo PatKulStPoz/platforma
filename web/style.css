@@ -77,6 +77,8 @@ html {
 .animated_wheel {
   height: 64px;
   width: 64px;
+  min-height: 64px;
+  min-width: 64px;
   background: #ffffff;
   background: linear-gradient(#000000, #888);
   border-radius: 100%;

@@ -24,7 +24,7 @@ static void websocket_task(void *arg) {
     {
         websocket_send_update_data(static_cast<DriverState*>(arg));
         vTaskDelay(
-            pdMS_TO_TICKS(500)
+            pdMS_TO_TICKS(200)
         );
     }
 }

@@ -37,6 +37,7 @@ extern "C" void app_main(void) {
     AdcReader* battery = new AdcReader(STATUS_BATTERY_READ_CHANNEL, ADC_ATTEN_DB_12);
 
     gpio_output_enable(STATUS_LED);
+    gpio_output_enable(STATUS_KOGUT);
 
     DriverState* state = new DriverState({
         .wifi_ssid = "Platforma_Hotspot",
@@ -49,13 +50,13 @@ extern "C" void app_main(void) {
     Driver* left = state->leftDriver();
     Driver* right = state->rightDriver();
 
-    right->getConfig().driver_ticks_per_full_rotation =  243;
-    right->getConfig().hall_sensor_ticks_per_full_rotation = 9;
-    right->getConfig().has_brake = false;
-
-    left->getConfig().driver_ticks_per_full_rotation = 75;
+    left->getConfig().driver_ticks_per_full_rotation =  243;
     left->getConfig().hall_sensor_ticks_per_full_rotation = 9;
     left->getConfig().has_brake = false;
+
+    right->getConfig().driver_ticks_per_full_rotation = 75;
+    right->getConfig().hall_sensor_ticks_per_full_rotation = 9;
+    right->getConfig().has_brake = false;
 
     load_data("left_driver", &left->getConfig());
     load_data("right_driver", &right->getConfig());

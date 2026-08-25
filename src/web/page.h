@@ -88,6 +88,8 @@ html {
 .animated_wheel {
   height: 64px;
   width: 64px;
+  min-height: 64px;
+  min-width: 64px;
   background: #ffffff;
   background: linear-gradient(#000000, #888);
   border-radius: 100%;
@@ -168,13 +170,13 @@ static const char* file_page_html = R"raw(
             <div id="left_drive" class="drive_item box"> 
                 <div class="info">
                     <h3>Lewe koło</h3>
-                    <p>l_driverTicksFullRotation: <span id="state:l_driverTicksFullRotation">--</span></p>
-                    <p>l_hallTicksFullRotation: <span id="state:l_hallTicksFullRotation">--</span></p>
-                    <p>l_driverTicks: <span id="state:l_driverTicks">--</span></p>
-                    <p>l_behavior: <span id="state:l_behavior">--</span></p>
-                    <p>l_driverTicksPerHall: <span id="state:l_driverTicksPerHall">--</span></p>
-                    <p>l_hallTicks: <span id="state:l_hallTicks">--</span></p>
-                    <p>l_direction: <span id="state:l_direction">--</span></p>
+                    <p>Oprót koła: <span id="left_hall_rotation">--</span> (<span id="left_rpm">--</span> RPM)</p>
+                    <p>Oprót silnika: <span id="left_driver_rotation">--</span></p>
+                    <p>Zachowanie: <span id="state:l_behavior">--</span></p>
+                    <p>Sterowanie: <span id="left_level">--</span> (<span id="left_current_level">--</span> / <span id="left_target_level">--</span>) / <span id="left_target_direction">--</span>
+                    <p>Kierunek obrotu koła: <span id="left_direction">--</span></p>
+                    <p>Odczyt halla: <span id="left_hallTicks">--</span> / <span id="state:l_hallTicksFullRotation">--</span> (<span id="state:l_hallTicks">--</span>)</p>
+                    <p>Odczyt silnika: <span id="left_driverTicks">--</span> / <span id="state:l_driverTicksFullRotation">--</span> (<span id="state:l_driverTicks">--</span>)</p>
 
                 </div>
                 <div class="animated_wheel" id="left_animated_wheel">
@@ -183,18 +185,17 @@ static const char* file_page_html = R"raw(
                     <div class="point"></div>
                     <div class="point"></div>
                 </div>
-                <canvas id="left_chart" width="200" height="100"></canvas>
             </div>
             <div id="right_drive" class="drive_item box">
                 <div class="info">
                     <h3>Prawe koło</h3>
-                    <p>r_driverTicksFullRotation: <span id="state:r_driverTicksFullRotation">--</span></p>
-                    <p>r_hallTicksFullRotation: <span id="state:r_hallTicksFullRotation">--</span></p>
-                    <p>r_driverTicks: <span id="state:r_driverTicks">--</span></p>
-                    <p>r_behavior: <span id="state:r_behavior">--</span></p>
-                    <p>r_driverTicksPerHall: <span id="state:r_driverTicksPerHall">--</span></p>
-                    <p>r_hallTicks: <span id="state:r_hallTicks">--</span></p>
-                    <p>r_direction: <span id="state:r_direction">--</span></p>
+                    <p>Oprót koła: <span id="right_hall_rotation">--</span> (<span id="right_rpm">--</span> RPM)</p>
+                    <p>Oprót silnika: <span id="right_driver_rotation">--</span></p>
+                    <p>Zachowanie: <span id="state:r_behavior">--</span></p>
+                    <p>Sterowanie: <span id="right_level">--</span> (<span id="right_current_level">--</span> / <span id="right_target_level">--</span>) / <span id="right_target_direction">--</span>
+                    <p>Kierunek obrotu koła: <span id="right_direction">--</span></p>
+                    <p>Odczyt halla: <span id="right_hallTicks">--</span> / <span id="state:r_hallTicksFullRotation">--</span> (<span id="state:r_hallTicks">--</span>)</p>
+                    <p>Odczyt silnika: <span id="right_driverTicks">--</span> / <span id="state:r_driverTicksFullRotation">--</span> (<span id="state:r_driverTicks">--</span>)</p>
                 </div>
                 <div class="animated_wheel" id="right_animated_wheel">
                     <div class="point"></div>
@@ -202,7 +203,6 @@ static const char* file_page_html = R"raw(
                     <div class="point"></div>
                     <div class="point"></div>
                 </div>
-                <canvas id="right_chart" width="200" height="100"></canvas>
             </div>
         </div>
         <div id="terminal_box">
@@ -239,7 +239,21 @@ const statusElement = document.getElementById("ws-status");
 
 function createObj(name) {
     return {
+        __receivedCount: 0,
         __animatedWheel: document.getElementById(`${name}_animated_wheel`),
+        __hallRotation: document.getElementById(`${name}_hall_rotation`),
+        __driverRotation: document.getElementById(`${name}_driver_rotation`),
+        __direction: document.getElementById(`${name}_direction`),
+        __target_direction: document.getElementById(`${name}_target_direction`),
+        __level: document.getElementById(`${name}_level`),
+        __current_level: document.getElementById(`${name}_current_level`),
+        __target_level: document.getElementById(`${name}_target_level`),
+        __hallTicks: document.getElementById(`${name}_hallTicks`),
+        __driverTicks: document.getElementById(`${name}_driverTicks`),
+
+        __rpm: document.getElementById(`${name}_rpm`),
+
+        __initialRotation: 0,
         halTicksFullRotation: 9,
         halTicks: 0
     }
@@ -248,15 +262,27 @@ function createObj(name) {
 const left = createObj("left");
 const right = createObj("right");
 function updateState(object) {
-    object.__animatedWheel.style.transform = `rotate(${ (360 * object.halTicks / object.halTicksFullRotation) % 36000 }deg)`
+    if (object.__receivedCount == 0) {
+        object.__initialRotation = Math.floor(object.halTicks / object.halTicksFullRotation) * 360
+    }
+    object.__receivedCount++;
+
+    object.__animatedWheel.style.transform = `rotate(${ (360 * object.hallTicks / object.hallTicksFullRotation) - object.__initialRotation }deg)`
+    object.__hallRotation.textContent = (360 + (360 * object.hallTicks / object.hallTicksFullRotation) % 360) % 360
+    object.__driverRotation.textContent = 360 * object.driverTicks / object.driverTicksFullRotation % 360
+    object.__rpm.textContent = (object.hall_tick_time < 0xFF000000 ?  1 / (object.hall_tick_time / 1000 * object.hallTicksFullRotation / 60) : 0).toFixed(2)
+    object.__direction.textContent = ["Brak", "Przód", "Brak", "Tył"][object.direction + 1]
+    object.__target_direction.textContent = object.target_direction == -1 ? "Tył" : "Przód"
+    object.__level.textContent = (object.level / 255).toFixed(2)
+    object.__target_level.textContent = (object.target_level / 255).toFixed(2)
+    object.__current_level.textContent = (object.current_level / 255).toFixed(2)
+    object.__hallTicks.textContent = (object.hallTicksFullRotation + (object.hallTicks % object.hallTicksFullRotation)) % object.hallTicksFullRotation
+    object.__driverTicks.textContent = object.driverTicks % object.driverTicksFullRotation
+
 }
 
 const term = document.getElementById("terminal");
 const termWind = document.getElementById("terminal_window")
-setInterval(() => {
-    updateState(left);
-    updateState(right);
-}, 500)
 
 
 const ctx = document.getElementById('left_chart');
@@ -351,6 +377,9 @@ function setup_socket(socket) {
                     right[property.substring(2)] = data[property];
                 }
             }
+
+            updateState(left);
+            updateState(right);
         } else if (data["__type"] == "print") {
             log(data.text)
         }

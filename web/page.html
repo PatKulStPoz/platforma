@@ -20,13 +20,13 @@
             <div id="left_drive" class="drive_item box"> 
                 <div class="info">
                     <h3>Lewe koło</h3>
-                    <p>l_driverTicksFullRotation: <span id="state:l_driverTicksFullRotation">--</span></p>
-                    <p>l_hallTicksFullRotation: <span id="state:l_hallTicksFullRotation">--</span></p>
-                    <p>l_driverTicks: <span id="state:l_driverTicks">--</span></p>
-                    <p>l_behavior: <span id="state:l_behavior">--</span></p>
-                    <p>l_driverTicksPerHall: <span id="state:l_driverTicksPerHall">--</span></p>
-                    <p>l_hallTicks: <span id="state:l_hallTicks">--</span></p>
-                    <p>l_direction: <span id="state:l_direction">--</span></p>
+                    <p>Oprót koła: <span id="left_hall_rotation">--</span> (<span id="left_rpm">--</span> RPM)</p>
+                    <p>Oprót silnika: <span id="left_driver_rotation">--</span></p>
+                    <p>Zachowanie: <span id="state:l_behavior">--</span></p>
+                    <p>Sterowanie: <span id="left_level">--</span> (<span id="left_current_level">--</span> / <span id="left_target_level">--</span>) / <span id="left_target_direction">--</span>
+                    <p>Kierunek obrotu koła: <span id="left_direction">--</span></p>
+                    <p>Odczyt halla: <span id="left_hallTicks">--</span> / <span id="state:l_hallTicksFullRotation">--</span> (<span id="state:l_hallTicks">--</span>)</p>
+                    <p>Odczyt silnika: <span id="left_driverTicks">--</span> / <span id="state:l_driverTicksFullRotation">--</span> (<span id="state:l_driverTicks">--</span>)</p>
 
                 </div>
                 <div class="animated_wheel" id="left_animated_wheel">
@@ -35,18 +35,17 @@
                     <div class="point"></div>
                     <div class="point"></div>
                 </div>
-                <canvas id="left_chart" width="200" height="100"></canvas>
             </div>
             <div id="right_drive" class="drive_item box">
                 <div class="info">
                     <h3>Prawe koło</h3>
-                    <p>r_driverTicksFullRotation: <span id="state:r_driverTicksFullRotation">--</span></p>
-                    <p>r_hallTicksFullRotation: <span id="state:r_hallTicksFullRotation">--</span></p>
-                    <p>r_driverTicks: <span id="state:r_driverTicks">--</span></p>
-                    <p>r_behavior: <span id="state:r_behavior">--</span></p>
-                    <p>r_driverTicksPerHall: <span id="state:r_driverTicksPerHall">--</span></p>
-                    <p>r_hallTicks: <span id="state:r_hallTicks">--</span></p>
-                    <p>r_direction: <span id="state:r_direction">--</span></p>
+                    <p>Oprót koła: <span id="right_hall_rotation">--</span> (<span id="right_rpm">--</span> RPM)</p>
+                    <p>Oprót silnika: <span id="right_driver_rotation">--</span></p>
+                    <p>Zachowanie: <span id="state:r_behavior">--</span></p>
+                    <p>Sterowanie: <span id="right_level">--</span> (<span id="right_current_level">--</span> / <span id="right_target_level">--</span>) / <span id="right_target_direction">--</span>
+                    <p>Kierunek obrotu koła: <span id="right_direction">--</span></p>
+                    <p>Odczyt halla: <span id="right_hallTicks">--</span> / <span id="state:r_hallTicksFullRotation">--</span> (<span id="state:r_hallTicks">--</span>)</p>
+                    <p>Odczyt silnika: <span id="right_driverTicks">--</span> / <span id="state:r_driverTicksFullRotation">--</span> (<span id="state:r_driverTicks">--</span>)</p>
                 </div>
                 <div class="animated_wheel" id="right_animated_wheel">
                     <div class="point"></div>
@@ -54,7 +53,6 @@
                     <div class="point"></div>
                     <div class="point"></div>
                 </div>
-                <canvas id="right_chart" width="200" height="100"></canvas>
             </div>
         </div>
         <div id="terminal_box">

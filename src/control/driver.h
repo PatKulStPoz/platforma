@@ -15,6 +15,8 @@ extern void intrHallMain(void* args);
 extern void intrHallFront(void* args);
 
 
+#define TARGET_VALUE_SHIFT 2
+
 
 enum DriverDirection {
     DRIVER_FORWARD = 1,
@@ -44,10 +46,12 @@ class Driver {
     Servo* brake;
     bool brakeValue = false;
 
-    int driverTicks = 0;
+    int32_t driverTicks = 0;
     int driverTicksSec = 0;
     int driverTicksPerHal = 0;
-    int halTicks = 0;
+    int32_t hallTicks = 0;
+    uint32_t hallTickTime = 0xFFFFFFFF;
+    uint32_t hallTickTimeCurrent = 0;
     DriverDirection direction = DRIVER_FORWARD;
     int intrCount = 0;
 
@@ -167,19 +171,22 @@ class Driver {
     // Obsługa przerwania od czujnika halla
     inline void handleHallMain() {
         this->intrCount++;
-        this->halTicks++;
         this->driverTicksPerHal = this->driverTicksSec;
         this->driverTicksSec = 0;
         if (this->lastHall == HALL_BACK) {
             this->hallDirection = HALL_FRONT;
+            this->hallTicks++;
         } else if (this->lastHall == HALL_FRONT) {
             this->hallDirection = HALL_BACK;
+            this->hallTicks--;
         } 
+        this->hallTickTime = this->hallTickTimeCurrent;
+        this->hallTickTimeCurrent = 0;
 
         this->lastHall = HALL_MAIN;
 
         if (xSemaphoreTake(this->behaviorSemaphore, 0)) {
-            this->behavior->onMainHallTick(this->halTicks);
+            this->behavior->onMainHallTick(this->hallTicks);
             BaseType_t higherPriorityTaskWoken = pdFALSE;
             xSemaphoreGiveFromISR(this->behaviorSemaphore, &higherPriorityTaskWoken);
         }
@@ -208,6 +215,14 @@ class Driver {
 
     inline uint8_t getLevel() {
         return this->value;
+    }
+
+    inline uint8_t getTargetLevel() {
+        return this->targetVal >> TARGET_VALUE_SHIFT;
+    }
+
+    inline uint8_t getCurrentLevel() {
+        return this->targetVal >> TARGET_VALUE_SHIFT;
     }
 
     // Rozpoczyna obrót
@@ -241,6 +256,10 @@ class Driver {
         }
         this->direction = direction;
         gpio_set_level(this->pinout.direction_out, direction == DRIVER_BACKWARDS);
+    }
+
+    DriverDirection getDirection() {
+        return this->direction;
     }
 
     void pushBehavior(BaseBehavior* behavior) {
@@ -293,11 +312,11 @@ class Driver {
     }
 
     inline void setTargetLevel(uint8_t value) {
-        this->targetVal = value << 2;
+        this->targetVal = value << TARGET_VALUE_SHIFT;
     }
 
     inline void setTargetLevelForce(uint8_t value) {
-        this->targetVal = value << 2;
+        this->targetVal = value << TARGET_VALUE_SHIFT;
         this->currentVal = this->targetVal;
         this->updateOutputLevel(value);
     }
@@ -308,17 +327,19 @@ class Driver {
             this->popBehavior();
         }
         this->behavior->update();
-
+        if (this->hallTickTimeCurrent < 0xFF000000) {
+            this->hallTickTimeCurrent += 10;
+        }
         if (this->currentVal < this->targetVal) {
-            if (this->currentVal < (40 << 2)) {
-                this->currentVal = (40 << 2);
-                updateOutputLevel((this->currentVal) >> 2);
+            if (this->currentVal < (40 << TARGET_VALUE_SHIFT)) {
+                this->currentVal = (40 << TARGET_VALUE_SHIFT);
+                updateOutputLevel((this->currentVal) >> TARGET_VALUE_SHIFT);
             } else {
-                updateOutputLevel((++this->currentVal) >> 2);
+                updateOutputLevel((++this->currentVal) >> TARGET_VALUE_SHIFT);
             }
         } else if (this->currentVal > this->targetVal) {
             this->currentVal = this->targetVal;
-            updateOutputLevel(--this->currentVal >> 2);
+            updateOutputLevel(--this->currentVal >> TARGET_VALUE_SHIFT);
         }
     }
 
@@ -329,11 +350,11 @@ class Driver {
     }
 
     //gety
-    inline int getHallTicks() {
-        return this->halTicks;
+    inline int32_t getHallTicks() {
+        return this->hallTicks;
     }
 
-    inline int getDriverTicks() {
+    inline int32_t getDriverTicks() {
         return this->driverTicks;
     }
 
@@ -349,6 +370,17 @@ class Driver {
         return this->hallDirection;
     }
 
+    inline uint32_t getPreviousHallTickTime() {
+        return this->hallTickTime;
+    }
+
+    inline uint32_t getCurrentHallTickTime() {
+        return this->hallTickTimeCurrent;
+    }
+
+    inline uint32_t getHallTickTime() {
+        return this->hallTickTimeCurrent > this->hallTickTime ? this->hallTickTimeCurrent : this->hallTickTime;;
+    }
 
     inline bool isAutomatic() {
         return this->behavior->isAutomated();
@@ -360,10 +392,12 @@ class Driver {
 
     // Zeruje liczniki liczące.
     void clearCount() {
-        this->halTicks = 0;
+        this->hallTicks = 0;
         this->driverTicks = 0;
         this->driverTicksSec = 0;
         this->driverTicksPerHal = 0;
+        this->hallTickTime = 0;
+        this->hallTickTimeCurrent = 0;
     }
 };
 
