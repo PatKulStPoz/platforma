@@ -34,6 +34,8 @@ typedef struct {
     bool has_brake = false;
     uint16_t driver_ticks_per_full_rotation = 256;
     uint16_t hall_sensor_ticks_per_full_rotation = 9;
+    bool allow_backwards = false;
+    uint8_t level_scale = 255;
 } DriverConfig;
 
 class Driver {
@@ -58,7 +60,7 @@ class Driver {
     uint8_t value = 0;
     uint16_t currentVal = 0;
     uint16_t targetVal = 0;
-    uint8_t currentActialOutput = 0;
+    uint8_t currentActualOutput = 0;
 
     dac_oneshot_handle_t dacHandle;
 
@@ -69,8 +71,8 @@ class Driver {
     BaseBehavior* behavior;
 
     void updateOutputLevel(uint8_t value) {
-        dac_oneshot_output_voltage(this->dacHandle, value);
-        this->currentActialOutput = value;
+        this->currentActualOutput = value * this->config.level_scale / 255;
+        dac_oneshot_output_voltage(this->dacHandle, this->currentActualOutput);
     }
 
     public:
@@ -249,13 +251,14 @@ class Driver {
         this->setDirection(DRIVER_FORWARD);
     }
 
-    void setDirection(DriverDirection direction) {
-        if (this->pinout.direction_out == GPIO_NUM_NC) {
-            printf("Direction not supported!");
-            return;
+    bool setDirection(DriverDirection direction) {
+        if (this->pinout.direction_out == GPIO_NUM_NC || !this->config.allow_backwards) {
+            return false;
         }
         this->direction = direction;
         gpio_set_level(this->pinout.direction_out, direction == DRIVER_BACKWARDS);
+
+        return true;
     }
 
     DriverDirection getDirection() {
@@ -302,9 +305,15 @@ class Driver {
         return res;
     }
 
-    inline void setBrake(bool value) {
-        this->brake->setAngle(value ? 10 : 170);
+    inline bool setBrake(bool value) {
+        if (!this->config.has_brake) {
+            return false;
+        }
+
+        this->brake->setAngle(value ? 80 : 180);
         this->brakeValue = value;
+
+        return true;
     }
 
     inline bool getBrake() {
@@ -312,11 +321,11 @@ class Driver {
     }
 
     inline void setTargetLevel(uint8_t value) {
-        this->targetVal = value << TARGET_VALUE_SHIFT;
+        this->targetVal = ((int) value) << TARGET_VALUE_SHIFT;
     }
 
     inline void setTargetLevelForce(uint8_t value) {
-        this->targetVal = value << TARGET_VALUE_SHIFT;
+        this->targetVal = ((int) value) << TARGET_VALUE_SHIFT;
         this->currentVal = this->targetVal;
         this->updateOutputLevel(value);
     }
@@ -325,6 +334,7 @@ class Driver {
     void update() {
         if (this->behavior->restorePrevious()) {
             this->popBehavior();
+            this->stop();
         }
         this->behavior->update();
         if (this->hallTickTimeCurrent < 0xFF000000) {
@@ -339,7 +349,7 @@ class Driver {
             }
         } else if (this->currentVal > this->targetVal) {
             this->currentVal = this->targetVal;
-            updateOutputLevel(--this->currentVal >> TARGET_VALUE_SHIFT);
+            updateOutputLevel(this->currentVal >> TARGET_VALUE_SHIFT);
         }
     }
 

@@ -173,7 +173,7 @@ static const char* file_page_html = R"raw(
                     <p>Oprót koła: <span id="left_hall_rotation">--</span> (<span id="left_rpm">--</span> RPM)</p>
                     <p>Oprót silnika: <span id="left_driver_rotation">--</span></p>
                     <p>Zachowanie: <span id="state:l_behavior">--</span></p>
-                    <p>Sterowanie: <span id="left_level">--</span> (<span id="left_current_level">--</span> / <span id="left_target_level">--</span>) / <span id="left_target_direction">--</span>
+                    <p>Sterowanie: <span id="left_level">--</span>% (<span id="left_current_level">--</span> / <span id="left_target_level">--</span>) / <span id="left_target_direction">--</span>
                     <p>Kierunek obrotu koła: <span id="left_direction">--</span></p>
                     <p>Odczyt halla: <span id="left_hallTicks">--</span> / <span id="state:l_hallTicksFullRotation">--</span> (<span id="state:l_hallTicks">--</span>)</p>
                     <p>Odczyt silnika: <span id="left_driverTicks">--</span> / <span id="state:l_driverTicksFullRotation">--</span> (<span id="state:l_driverTicks">--</span>)</p>
@@ -192,7 +192,7 @@ static const char* file_page_html = R"raw(
                     <p>Oprót koła: <span id="right_hall_rotation">--</span> (<span id="right_rpm">--</span> RPM)</p>
                     <p>Oprót silnika: <span id="right_driver_rotation">--</span></p>
                     <p>Zachowanie: <span id="state:r_behavior">--</span></p>
-                    <p>Sterowanie: <span id="right_level">--</span> (<span id="right_current_level">--</span> / <span id="right_target_level">--</span>) / <span id="right_target_direction">--</span>
+                    <p>Sterowanie: <span id="right_level">--</span>% (<span id="right_current_level">--</span> / <span id="right_target_level">--</span>) / <span id="right_target_direction">--</span>
                     <p>Kierunek obrotu koła: <span id="right_direction">--</span></p>
                     <p>Odczyt halla: <span id="right_hallTicks">--</span> / <span id="state:r_hallTicksFullRotation">--</span> (<span id="state:r_hallTicks">--</span>)</p>
                     <p>Odczyt silnika: <span id="right_driverTicks">--</span> / <span id="state:r_driverTicksFullRotation">--</span> (<span id="state:r_driverTicks">--</span>)</p>
@@ -273,9 +273,9 @@ function updateState(object) {
     object.__rpm.textContent = (object.hall_tick_time < 0xFF000000 ?  1 / (object.hall_tick_time / 1000 * object.hallTicksFullRotation / 60) : 0).toFixed(2)
     object.__direction.textContent = ["Brak", "Przód", "Brak", "Tył"][object.direction + 1]
     object.__target_direction.textContent = object.target_direction == -1 ? "Tył" : "Przód"
-    object.__level.textContent = (object.level / 255).toFixed(2)
-    object.__target_level.textContent = (object.target_level / 255).toFixed(2)
-    object.__current_level.textContent = (object.current_level / 255).toFixed(2)
+    object.__level.textContent = (object.level / 255 * 100).toFixed(1)
+    object.__target_level.textContent = (object.target_level / 255 * 100).toFixed(1)
+    object.__current_level.textContent = (object.current_level / 255 * 100).toFixed(1)
     object.__hallTicks.textContent = (object.hallTicksFullRotation + (object.hallTicks % object.hallTicksFullRotation)) % object.hallTicksFullRotation
     object.__driverTicks.textContent = object.driverTicks % object.driverTicksFullRotation
 

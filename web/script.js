@@ -32,14 +32,14 @@ function updateState(object) {
     object.__receivedCount++;
 
     object.__animatedWheel.style.transform = `rotate(${ (360 * object.hallTicks / object.hallTicksFullRotation) - object.__initialRotation }deg)`
-    object.__hallRotation.textContent = (360 + (360 * object.hallTicks / object.hallTicksFullRotation) % 360) % 360
-    object.__driverRotation.textContent = 360 * object.driverTicks / object.driverTicksFullRotation % 360
+    object.__hallRotation.textContent = ((360 + (360 * object.hallTicks / object.hallTicksFullRotation) % 360) % 360).toFixed(1)
+    object.__driverRotation.textContent = (360 * object.driverTicks / object.driverTicksFullRotation % 360).toFixed(1)
     object.__rpm.textContent = (object.hall_tick_time < 0xFF000000 ?  1 / (object.hall_tick_time / 1000 * object.hallTicksFullRotation / 60) : 0).toFixed(2)
     object.__direction.textContent = ["Brak", "Przód", "Brak", "Tył"][object.direction + 1]
     object.__target_direction.textContent = object.target_direction == -1 ? "Tył" : "Przód"
-    object.__level.textContent = (object.level / 255).toFixed(2)
-    object.__target_level.textContent = (object.target_level / 255).toFixed(2)
-    object.__current_level.textContent = (object.current_level / 255).toFixed(2)
+    object.__level.textContent = (object.level / 255 * 100).toFixed(1)
+    object.__target_level.textContent = (object.target_level / 255 * 100).toFixed(1)
+    object.__current_level.textContent = (object.current_level / 255 * 100).toFixed(1)
     object.__hallTicks.textContent = (object.hallTicksFullRotation + (object.hallTicks % object.hallTicksFullRotation)) % object.hallTicksFullRotation
     object.__driverTicks.textContent = object.driverTicks % object.driverTicksFullRotation
 

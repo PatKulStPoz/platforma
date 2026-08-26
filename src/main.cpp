@@ -32,7 +32,7 @@ extern "C" void app_main(void) {
 
     setup_servo();
 
-    //gpio_install_isr_service(0);
+    gpio_install_isr_service(0);
 
     AdcReader* battery = new AdcReader(STATUS_BATTERY_READ_CHANNEL, ADC_ATTEN_DB_12);
 
@@ -103,15 +103,15 @@ extern "C" void app_main(void) {
         //    right->getLastHall(), right->getHallDirection(), right->getIntrCount());
         //}
 
-        int newHal = left->getHallTicks();
+        int32_t newHal = left->getHallTicks();
         if (newHal != lastHal) {
-            printf("[STATE|Left] Hal: %d, Driver: %d, Time: %" PRIu32 "0 ms, Last: %d, Dir: %d\n", newHal, left->getDriverTicksPerHal(), tick - tickOld, left->getLastHall(), left->getHallDirection());
+            printf("[STATE|Left] Hal: %" PRIu32 ", Driver: %d, Time: %" PRIu32 "0 ms, Last: %d, Dir: %d\n", newHal, left->getDriverTicksPerHal(), tick - tickOld, left->getLastHall(), left->getHallDirection());
             lastHal = newHal;
             tickOld = tick;
         }
         newHal = right->getHallTicks();
         if (newHal != lastHal2) {
-            printf("[STATE|Right] Hal: %d, Driver: %d, Time: %" PRIu32 "0 ms, Last: %d, Dir: %d\n", newHal, right->getDriverTicksPerHal(), tick - tickOld2, right->getLastHall(), right->getHallDirection());
+            printf("[STATE|Right] Hal: %" PRIu32 ", Driver: %d, Time: %" PRIu32 "0 ms, Last: %d, Dir: %d\n", newHal, right->getDriverTicksPerHal(), tick - tickOld2, right->getLastHall(), right->getHallDirection());
             lastHal2 = newHal;
             tickOld2 = tick;
         }

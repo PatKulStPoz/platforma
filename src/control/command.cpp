@@ -59,7 +59,7 @@ bool cmd_setlevel(DriverState* state, TaskedDriver driver, StringReader& argumen
     if (level.result() < 0) {
         print("WARN: level too low!");
         return false;
-    } else if (level.result() > 1) {
+    } else if (level.result() > 100) {
         print("WARN: level too high!");
         return false;
     }
@@ -67,11 +67,11 @@ bool cmd_setlevel(DriverState* state, TaskedDriver driver, StringReader& argumen
     auto now = argument.readWordLowercase() == "now";
     if (now) {
         print("Set level of " + strdrv(driver) + " to " + std::to_string(level.result()));
-        if (driver & TASK_DRIVER_LEFT) state->leftDriver()->setLevel(level.result() * 255);
-        if (driver & TASK_DRIVER_RIGHT) state->rightDriver()->setLevel(level.result() * 255);
+        if (driver & TASK_DRIVER_LEFT) state->leftDriver()->setLevel(level.result() * 255 / 100);
+        if (driver & TASK_DRIVER_RIGHT) state->rightDriver()->setLevel(level.result() * 255 / 100);
     } else {
         print("Added set level of " + strdrv(driver) + " to " + std::to_string(level.result()) + " task");
-        state->getTasks()->pushTask(new SetLevelTask(driver, (int) (level.result() * 255) ));
+        state->getTasks()->pushTask(new SetLevelTask(driver, (int) (level.result() * 255 / 100) ));
     }
     return true;
 }
@@ -184,6 +184,8 @@ bool cmd_config_print(DriverState* state, TaskedDriver driver, StringReader& arg
         print(" hall_ticks_per_full_rotation = " + std::to_string(state->leftDriver()->getConfig().hall_sensor_ticks_per_full_rotation));
         print(" driver_ticks_per_full_rotation = " + std::to_string(state->leftDriver()->getConfig().driver_ticks_per_full_rotation));
         print(" brake = " + std::to_string(state->leftDriver()->getConfig().has_brake));
+        print(" allow_backwards = " + std::to_string(state->leftDriver()->getConfig().allow_backwards));
+        print(" level_scale = " + std::to_string(state->leftDriver()->getConfig().level_scale * 100 / 255.0));
     }
 
     if (driver & TASK_DRIVER_RIGHT) {
@@ -191,6 +193,8 @@ bool cmd_config_print(DriverState* state, TaskedDriver driver, StringReader& arg
         print(" hall_ticks_per_full_rotation = " + std::to_string(state->rightDriver()->getConfig().hall_sensor_ticks_per_full_rotation));
         print(" driver_ticks_per_full_rotation = " + std::to_string(state->rightDriver()->getConfig().driver_ticks_per_full_rotation));
         print(" brake = " + std::to_string(state->rightDriver()->getConfig().has_brake));
+        print(" allow_backwards = " + std::to_string(state->rightDriver()->getConfig().allow_backwards));
+        print(" level_scale = " + std::to_string(state->rightDriver()->getConfig().level_scale * 100 / 255.0));
     }
 
     print("General:");
@@ -232,6 +236,65 @@ bool cmd_config_set_driver_ticks(DriverState* state, TaskedDriver driver, String
     }
     
     print("Set driver tick count for full rotation of " + strdrv(driver) + " to " + std::to_string(level.result()));
+
+    return true;
+}
+
+bool cmd_config_set_allow_backwards(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
+    Result<bool> level = argument.readBool();
+    if (handleErr(level, print)) return false;
+
+    if (driver & TASK_DRIVER_LEFT) {
+        state->leftDriver()->getConfig().allow_backwards = level.result();        
+    }
+
+    if (driver & TASK_DRIVER_RIGHT) {
+        state->rightDriver()->getConfig().allow_backwards = level.result();        
+    }
+    
+    print("Set allow backwards of " + strdrv(driver) + " to " + std::to_string(level.result()));
+
+    return true;
+}
+
+bool cmd_config_set_has_brake(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
+    Result<bool> level = argument.readBool();
+    if (handleErr(level, print)) return false;
+
+    if (driver & TASK_DRIVER_LEFT) {
+        state->leftDriver()->getConfig().has_brake = level.result();        
+    }
+
+    if (driver & TASK_DRIVER_RIGHT) {
+        state->rightDriver()->getConfig().has_brake = level.result();        
+    }
+    
+    print("Set has brake of " + strdrv(driver) + " to " + std::to_string(level.result()));
+
+    return true;
+}
+
+bool cmd_config_set_level_scale(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
+    Result<double> level = argument.readDouble();
+    if (handleErr(level, print)) return false;
+
+    if (level.result() < 0) {
+        print("WARN: level too low!");
+        return false;
+    } else if (level.result() > 100) {
+        print("WARN: level too high!");
+        return false;
+    }
+
+    if (driver & TASK_DRIVER_LEFT) {
+        state->leftDriver()->getConfig().level_scale = (level.result() * 255 / 100);        
+    }
+
+    if (driver & TASK_DRIVER_RIGHT) {
+        state->rightDriver()->getConfig().level_scale = (level.result() * 255 / 100);        
+    }
+    
+    print("Set level scale of " + strdrv(driver) + " to " + std::to_string(level.result()));
 
     return true;
 }
@@ -325,9 +388,9 @@ std::vector<CommandDef> commands = {
     {{"help"}, "", "Show this message", cmd_help},
     {{"start"}, "", "Starts the wheel", cmd_start},
     {{"stop"}, "", "Stops the wheel", cmd_stop},
-    {{"setlevel", "setlvl"}, "[decimal, <0;1>]", "Sets the output/speed of the wheel", cmd_setlevel},
+    {{"setlevel", "setlvl"}, "[decimal, <0;100>]", "Sets the output/speed of the wheel", cmd_setlevel},
     {{"setdirection", "setdir"}, "forward/backward", "Sets the direction of the wheel", cmd_setdirection},
-    {{"setbrake", "brake"}, "[bool]", "Sets the direction of the wheel", cmd_setdirection},
+    {{"setbrake", "brake"}, "[bool]", "Sets the direction of the wheel", cmd_setbrake},
     {{"behavior", "bh"}, "default/sync/clear", "Sets the current behavior", cmd_behavior}, 
     {{"rotate", "rot", "r"}, "[degrees]", "Rotates the wheel by given angle", cmd_rotate},
     {{"wait", "w"}, "[seconds]", "Waits X seconds before executing next task", cmd_wait},
@@ -342,6 +405,9 @@ std::vector<CommandDef> commands = {
         {{"set"}, "", "Set value...", NULL,  {
             {{"hall_ticks_per_full_rotation", "hall_count", "hall", "hall_ticks"}, "[number]", "Number of 'ticks' from hall sensor for full rotation", cmd_config_set_hall_ticks},
             {{"driver_ticks_per_full_rotation", "driver_count", "driver", "driver_ticks"}, "[number]", "Number of 'ticks' from wheel driver for full rotation", cmd_config_set_driver_ticks},
+            {{"has_brake", "brake"}, "[bool]", "Sets the has brake value of the wheel", cmd_config_set_has_brake},
+            {{"allow_backwards", "backwards"}, "[bool]", "Sets the allow backwards value of the wheel", cmd_config_set_allow_backwards},
+            {{"scale_level", "level"}, "[decimal, <0;100>]", "Sets the level scaler for the wheel", cmd_config_set_level_scale},
             {{"wifi_ssid"}, "[ssid]", "Sets ssid of wifi to connect to", cmd_config_set_wifi_ssid},
             {{"wifi_password"}, "[password/empty]", "Sets password of wifi to connect to. Setting it to empty skips password auth", cmd_config_set_wifi_password},
             {{"wifi_ap"}, "[bool]", "Toggles the access point wifi mode", cmd_config_set_wifi_ap},
