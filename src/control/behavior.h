@@ -45,7 +45,9 @@ class DefaultBehavior : public BaseBehavior {
     }
 
     virtual void onLevelSet(uint8_t level) {
-        this->setTargetLevel(level);
+        if (this->running) {
+            this->setTargetLevel(level);
+        }
     }
 
     virtual BehaviorType type() {
@@ -64,9 +66,9 @@ BaseBehavior* createDefaultBehavior() {
 class RotateBehavior : public BaseBehavior {
     public:
     int32_t degrees;
-    int32_t rotationTick;
-    int32_t driverRotationTick;
-    int32_t driverRotationTickLast;
+    int32_t rotationTick = 0;
+    int32_t driverRotationTick = 0;
+    int32_t driverRotationTickLast = 0;
 
     public:
     RotateBehavior(int degrees) {
@@ -75,15 +77,15 @@ class RotateBehavior : public BaseBehavior {
 
     virtual void setup(Driver* driver, BaseBehavior* previousBehavior) {
         BaseBehavior::setup(driver, previousBehavior);
-        this->rotationTick = (this->degrees - 1) * driver->getConfig().hall_sensor_ticks_per_full_rotation / 360;
-        this->driverRotationTick = (this->degrees - 1) * driver->getConfig().driver_ticks_per_full_rotation / 360;
-        this->driverRotationTickLast = this->driverRotationTick;
+        if (this->degrees != 0) {
+            this->rotationTick = (this->degrees - 1) * driver->getConfig().hall_sensor_ticks_per_full_rotation / 360;
+            this->driverRotationTick = (this->degrees - 1) * driver->getConfig().driver_ticks_per_full_rotation / 360;
+            this->driverRotationTickLast = this->driverRotationTick;
+        }
     }
 
     virtual void onMainHallTick(uint32_t tick) {
         this->updateTargetSpeed();
-            
-
         this->rotationTick--;
         this->driverRotationTickLast = this->driverRotationTick;
     }
@@ -220,5 +222,3 @@ class SyncedForwardBehavior : public DefaultBehavior {
         return "SyncedForwardBehavior[]";
     }
 };
-
-

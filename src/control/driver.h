@@ -136,7 +136,7 @@ class Driver {
         dac_oneshot_output_voltage(this->dacHandle, 0);
 
         this->brake->setup();
-        this->setBrake(false);
+        this->brake->setAngle(180);
     }
 
 
@@ -156,7 +156,6 @@ class Driver {
         this->dacHandle = NULL;
 
         this->brake->destroy();
-        this->setBrake(0);
     }
 
     // Obsługa przerwania od pwm płytki sterującej
@@ -240,12 +239,13 @@ class Driver {
     void reset() {
         this->stop();
         this->setLevel(0);
+        this->setBrake(false);
         xSemaphoreTake(this->behaviorSemaphore, portMAX_DELAY);
 
-        this->behavior->getPreviousBehavior(true);
-        delete this->behavior;
+        BaseBehavior* old = this->behavior;
         this->behavior = createDefaultBehavior();
         this->behavior->setup(this, NULL);
+        delete old;
         
         xSemaphoreGive(this->behaviorSemaphore);
         this->setDirection(DRIVER_FORWARD);

@@ -231,7 +231,7 @@ static void tcp_server_task(void *pvParameters) {
                         line[i][index[i]] = 0;
                         
                         parseAndExecuteMulti(state, [i](std::string text) {
-                            socket_send(TAG, sock[i], (text + "\n").c_str(), text.length() + 1);
+                            socket_send(TAG, sock[i], (text + "\r\n").c_str(), text.length() + 2);
                         }, std::string(line[i]));
                         index[i] = 0;
                     }

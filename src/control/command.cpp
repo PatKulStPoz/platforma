@@ -9,7 +9,7 @@
 #include "../datastorage.h"
 #include "../util/stringreader.h"
 
-std::string strdrv(TaskedDriver driver) {
+std::string to_string(TaskedDriver driver) {
     switch (driver) {
         case TASK_DRIVER_BOTH:
         return "both wheels";
@@ -21,6 +21,29 @@ std::string strdrv(TaskedDriver driver) {
         return "no wheels";
     }
 }
+
+std::string to_string(HallId driver) {
+    switch (driver) {
+        case HALL_BACK:
+        return "backward";
+        case HALL_FRONT:
+        return "forward";
+        default:
+        return "none";
+    }
+}
+
+std::string to_string(DriverDirection driver) {
+    switch (driver) {
+        case DRIVER_BACKWARDS:
+        return "backward";
+        case DRIVER_FORWARD:
+        return "forward";
+        default:
+        return "none";
+    }
+}
+
 
 bool uart_echo_enabled = true;
 
@@ -41,14 +64,14 @@ bool cmd_help(DriverState* state, TaskedDriver driver, StringReader& argument, P
 
 bool cmd_start(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
     state->getTasks()->pushTask(new StartTask(driver));
-    print("Added start " + strdrv(driver) + " task");
+    print("Added start " + to_string(driver) + " task");
     return true;
 }
 
 
 bool cmd_stop(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
     state->getTasks()->pushTask(new StopTask(driver));
-    print("Added stop " + strdrv(driver) + " task");
+    print("Added stop " + to_string(driver) + " task");
     return true;
 }
 
@@ -66,11 +89,11 @@ bool cmd_setlevel(DriverState* state, TaskedDriver driver, StringReader& argumen
 
     auto now = argument.readWordLowercase() == "now";
     if (now) {
-        print("Set level of " + strdrv(driver) + " to " + std::to_string(level.result()));
+        print("Set level of " + to_string(driver) + " to " + std::to_string(level.result()));
         if (driver & TASK_DRIVER_LEFT) state->leftDriver()->setLevel(level.result() * 255 / 100);
         if (driver & TASK_DRIVER_RIGHT) state->rightDriver()->setLevel(level.result() * 255 / 100);
     } else {
-        print("Added set level of " + strdrv(driver) + " to " + std::to_string(level.result()) + " task");
+        print("Added set level of " + to_string(driver) + " to " + std::to_string(level.result()) + " task");
         state->getTasks()->pushTask(new SetLevelTask(driver, (int) (level.result() * 255 / 100) ));
     }
     return true;
@@ -82,7 +105,17 @@ bool cmd_setdirection(DriverState* state, TaskedDriver driver, StringReader& arg
 
     DriverDirection direction = !dir.empty() && (dir.at(0) == 'b') ? DRIVER_BACKWARDS : DRIVER_FORWARD;
 
-    print("Added direction of " + strdrv(driver) + " to " + std::to_string(direction) + " task");
+    if (driver & TASK_DRIVER_LEFT && !state->leftDriver()->getConfig().allow_backwards) {
+        print("WARNING: Left wheel doesn't support direction changing!");
+        driver = (TaskedDriver) (driver & TASK_DRIVER_RIGHT);
+    }
+
+    if (driver & TASK_DRIVER_RIGHT && !state->rightDriver()->getConfig().allow_backwards) {
+        print("WARNING: Right wheel doesn't support direction changing!");
+        driver = (TaskedDriver) (driver & TASK_DRIVER_LEFT);
+    }
+
+    print("Added direction of " + to_string(driver) + " to " + to_string(direction) + " task");
     state->getTasks()->pushTask(new SetDirectionTask(driver, direction));
     return true;
 }
@@ -93,7 +126,17 @@ bool cmd_setbrake(DriverState* state, TaskedDriver driver, StringReader& argumen
 
     bool val = str.length() == 0 ? !uart_echo_enabled : (str.at(0) == 't' || str.at(0) == '1' || str == "on");
 
-    print("Added set brake of " + strdrv(driver) + " to " + std::to_string(val) + " task");
+    if (driver & TASK_DRIVER_LEFT && !state->leftDriver()->getConfig().has_brake) {
+        print("WARNING: Left wheel doesn't support brakes!");
+        driver = (TaskedDriver) (driver & TASK_DRIVER_RIGHT);
+    }
+
+    if (driver & TASK_DRIVER_RIGHT && !state->rightDriver()->getConfig().has_brake) {
+        print("WARNING: Right wheel doesn't support brakes!");
+        driver = (TaskedDriver) (driver & TASK_DRIVER_LEFT);
+    }
+
+    print("Added set brake of " + to_string(driver) + " to " + std::to_string(val) + " task");
     state->getTasks()->pushTask(new SetBrakeTask(driver, val));
     return true;
 }
@@ -107,7 +150,7 @@ bool cmd_rotate(DriverState* state, TaskedDriver driver, StringReader& argument,
         return false;
     }
 
-    print("Added rotate " + strdrv(driver) + " " + std::to_string(level.result()) + " degrees task");
+    print("Added rotate " + to_string(driver) + " " + std::to_string(level.result()) + " degrees task");
     state->getTasks()->pushTask(new RotateTask(driver, level.result()));
     return true;
 }
@@ -123,13 +166,41 @@ bool cmd_wait(DriverState* state, TaskedDriver driver, StringReader& argument, P
 }
 
 bool cmd_wait_for(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
-    print("Added wait until " + strdrv(driver) + " finishes task");
+    print("Added wait until " + to_string(driver) + " finishes task");
     state->getTasks()->pushTask(new WaitForFinishedTask(driver));
     return true;
 }
 
+
+void driver_state_print(Driver* driver, Printer print) {
+    print(" level = " + std::to_string(driver->getLevel() * 100 / 255));
+    print(" direction = " + to_string(driver->getDirection()));
+    print(" brake = " + std::to_string(driver->getBrake()));
+
+    print(" current_level = " + std::to_string(driver->getCurrentLevel() * 100 / 255));
+    print(" target_level = " + std::to_string(driver->getTargetLevel() * 100 / 255));
+    print(" hall_ticks = " + std::to_string(driver->getHallTicks()));
+    print(" driver_ticks = " + std::to_string(driver->getDriverTicks()));
+    print(" hall_direction = " + to_string(driver->getHallDirection()));
+    print(" behavior = " + driver->getBehaviorToStringWithExtraSafe());
+
+}
+
+
+bool cmd_state(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
+    if (driver & TASK_DRIVER_LEFT) {
+        print("Left wheel: ");
+        driver_state_print(state->leftDriver(), print);
+    }
+    if (driver & TASK_DRIVER_RIGHT) {
+        print("Right wheel: ");
+        driver_state_print(state->leftDriver(), print);
+    }
+    return true;
+}
+
 bool cmd_reset(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
-    print("Added reset " + strdrv(driver) + " task");
+    print("Added reset " + to_string(driver) + " task");
     state->getTasks()->pushTask(new ResetTask(driver));
     return true;
 }
@@ -146,10 +217,10 @@ bool cmd_behavior(DriverState* state, TaskedDriver driver, StringReader& argumen
 
     if (str == "clear" || str == "default") {
         state->getTasks()->pushTask(new ResetBehaviorTask(driver));
-        print("Added clear behavior " + strdrv(driver) + " task");
+        print("Added clear behavior " + to_string(driver) + " task");
     } else if (str == "sync") {
         state->getTasks()->pushTask(new SetSyncBehaviorTask(driver));
-        print("Added set sync behavior " + strdrv(driver) + " task");
+        print("Added set sync behavior " + to_string(driver) + " task");
     } else {
         print("Invalid argument");
         return false;
@@ -218,7 +289,7 @@ bool cmd_config_set_hall_ticks(DriverState* state, TaskedDriver driver, StringRe
         state->rightDriver()->getConfig().hall_sensor_ticks_per_full_rotation = level.result();        
     }
     
-    print("Set hall sensor tick count for full rotation of " + strdrv(driver) + " to " + std::to_string(level.result()));
+    print("Set hall sensor tick count for full rotation of " + to_string(driver) + " to " + std::to_string(level.result()));
 
     return true;
 }
@@ -235,7 +306,7 @@ bool cmd_config_set_driver_ticks(DriverState* state, TaskedDriver driver, String
         state->rightDriver()->getConfig().driver_ticks_per_full_rotation = level.result();        
     }
     
-    print("Set driver tick count for full rotation of " + strdrv(driver) + " to " + std::to_string(level.result()));
+    print("Set driver tick count for full rotation of " + to_string(driver) + " to " + std::to_string(level.result()));
 
     return true;
 }
@@ -252,7 +323,7 @@ bool cmd_config_set_allow_backwards(DriverState* state, TaskedDriver driver, Str
         state->rightDriver()->getConfig().allow_backwards = level.result();        
     }
     
-    print("Set allow backwards of " + strdrv(driver) + " to " + std::to_string(level.result()));
+    print("Set allow backwards of " + to_string(driver) + " to " + std::to_string(level.result()));
 
     return true;
 }
@@ -269,7 +340,7 @@ bool cmd_config_set_has_brake(DriverState* state, TaskedDriver driver, StringRea
         state->rightDriver()->getConfig().has_brake = level.result();        
     }
     
-    print("Set has brake of " + strdrv(driver) + " to " + std::to_string(level.result()));
+    print("Set has brake of " + to_string(driver) + " to " + std::to_string(level.result()));
 
     return true;
 }
@@ -294,7 +365,7 @@ bool cmd_config_set_level_scale(DriverState* state, TaskedDriver driver, StringR
         state->rightDriver()->getConfig().level_scale = (level.result() * 255 / 100);        
     }
     
-    print("Set level scale of " + strdrv(driver) + " to " + std::to_string(level.result()));
+    print("Set level scale of " + to_string(driver) + " to " + std::to_string(level.result()));
 
     return true;
 }
@@ -374,6 +445,63 @@ bool cmd_config_load(DriverState* state, TaskedDriver driver, StringReader& argu
     return true;
 }
 
+void test_wheel(Driver* driver, Printer print) {
+    driver->reset();
+    driver->clearCount();
+    driver->setLevel(255);
+    driver->start();
+
+    uint32_t tick = 0;
+    while (tick++ < 1000) {
+        driver->update();
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    driver->clearCount();
+    tick = 0;
+    uint32_t hallCount = driver->getConfig().hall_sensor_ticks_per_full_rotation * 100;
+    while (driver->getHallTicks() < hallCount) {
+        driver->update();
+        tick++;
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    uint32_t driverTicks = driver->getDriverTicks();
+    print("Driver ticks for " + std::to_string(hallCount) + " -> " + std::to_string(driverTicks));
+    print("Driver ticks for full rotation  -> " + std::to_string(driverTicks / 100));
+    print("Time for full rotation -> " + std::to_string(tick * 10 / 100));
+
+    driver->reset();
+}
+
+bool cmd_wheel_tester(DriverState* state, TaskedDriver driver, StringReader& argument, Printer print) {
+    print("Preparing for testing... Previous state will be invalid!");
+    state->getTasks()->clearTasks();
+    if (driver & TASK_DRIVER_LEFT) {
+        state->leftDriver()->reset();
+        state->leftDriver()->clearCount();
+    }
+    if (driver & TASK_DRIVER_RIGHT) {
+        state->rightDriver()->reset();
+        state->rightDriver()->clearCount();
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(100));
+    
+    if (driver & TASK_DRIVER_LEFT) {
+        print("== Testing left wheel");
+        test_wheel(state->leftDriver(), print);
+    }
+    
+    if (driver & TASK_DRIVER_RIGHT) {
+        print("== Testing right wheel");
+        test_wheel(state->rightDriver(), print);
+    }
+
+
+
+    return true;
+}
+
+
 
 typedef struct CommandDef {
     std::vector<std::string> name;
@@ -395,6 +523,7 @@ std::vector<CommandDef> commands = {
     {{"rotate", "rot", "r"}, "[degrees]", "Rotates the wheel by given angle", cmd_rotate},
     {{"wait", "w"}, "[seconds]", "Waits X seconds before executing next task", cmd_wait},
     {{"waitfor", "wf"}, "", "Waits for current wheel behavior to finish", cmd_wait_for},
+    {{"state"}, "", "Prints state of the wheel", cmd_state},
     {{"reset"}, "", "Resets wheel's state", cmd_reset},
     {{"cleartasks"}, "", "Force-clears all the tasks", cmd_cleartasks},
     {{"esp32.reboot"}, "", "Restarts the esp32" , cmd_esp32_reboot},
@@ -416,7 +545,8 @@ std::vector<CommandDef> commands = {
         }},
         {{"save"}, "", "Saves current configuration.", cmd_config_save},
         {{"load"}, "", "Load previously saved configuration", cmd_config_load}
-    }}
+    }},
+    {{"wheel_test"}, "", "Test both wheels and tries to receive data from them. Useful for configuration and debugging. Only use when not on ground!", cmd_wheel_tester},
 };
 
 

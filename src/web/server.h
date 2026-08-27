@@ -77,8 +77,7 @@ void websocket_print_cmd(std::string text) {
 }
 
 //websocket handler
-static esp_err_t websocket_handler(httpd_req_t *req)
-{
+static esp_err_t websocket_handler(httpd_req_t *req) {
     //ESP_LOGI(TAG, "=== websocket_handler ===");
     //ESP_LOGI(TAG, "method = %d", req->method);
     //ESP_LOGI(TAG, "HTTP_GET = %d", HTTP_GET);
@@ -94,8 +93,7 @@ static esp_err_t websocket_handler(httpd_req_t *req)
     if (ret != ESP_OK)
         return ret;
 
-    if (ws_pkt.len > 0)
-    {
+    if (ws_pkt.len > 0) {
         uint8_t *buf = new uint8_t[ws_pkt.len + 1];
 
         ws_pkt.payload = buf;
@@ -201,6 +199,13 @@ static httpd_handle_t start_web_server(void)
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.stack_size = 4096 * 3 / 2,
     config.max_uri_handlers = PAGE_COUNT + 8  ;
+    config.lru_purge_enable = true;
+    config.max_open_sockets = 6;
+    config.keep_alive_enable = true;
+    config.keep_alive_idle = 5;
+    config.keep_alive_interval = 5;
+    config.keep_alive_count = 3;
+
     httpd_handle_t server = nullptr;
     if (httpd_start(&server, &config) == ESP_OK)
     {

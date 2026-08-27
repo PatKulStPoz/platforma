@@ -156,6 +156,16 @@ setup_socket(connetion);
 const inputField = document.getElementById("terminal_input");
 const sendButton = document.getElementById("terminal_button");
 
+function sendCommand(command) {
+    if (connetion.readyState === connetion.OPEN) {
+        connetion.send(`EXEC>${command}`);
+        log(`EXEC>${command}`);
+    } else {
+        log(`[WEB] Failed to sent '${command}' command! Not connected!`);
+    }
+}
+
+window.sendCommand = sendCommand;
 
 inputField.addEventListener("keypress", function(event) {
   if (event.key === "Enter") {
@@ -170,7 +180,16 @@ sendButton.onclick = () => {
         return;
     }
 
-    connetion.send(`EXEC>${inputField.value}`);
-    log(`EXEC>${inputField.value}`);
+    sendCommand(inputField.value)
     inputField.value = "";
 }
+
+
+function buttonSelect(button, clazz) {
+    for (let b of document.getElementsByClassName(clazz)) {
+        b.classList.remove("selected")
+    }
+    button.classList.add("selected");
+}
+
+window.buttonSelect = buttonSelect;

@@ -103,7 +103,7 @@ extern "C" void app_main(void) {
         //    right->getLastHall(), right->getHallDirection(), right->getIntrCount());
         //}
 
-        int32_t newHal = left->getHallTicks();
+        /*int32_t newHal = left->getHallTicks();
         if (newHal != lastHal) {
             printf("[STATE|Left] Hal: %" PRIu32 ", Driver: %d, Time: %" PRIu32 "0 ms, Last: %d, Dir: %d\n", newHal, left->getDriverTicksPerHal(), tick - tickOld, left->getLastHall(), left->getHallDirection());
             lastHal = newHal;
@@ -114,7 +114,7 @@ extern "C" void app_main(void) {
             printf("[STATE|Right] Hal: %" PRIu32 ", Driver: %d, Time: %" PRIu32 "0 ms, Last: %d, Dir: %d\n", newHal, right->getDriverTicksPerHal(), tick - tickOld2, right->getLastHall(), right->getHallDirection());
             lastHal2 = newHal;
             tickOld2 = tick;
-        }
+        }*/
         tick++;
     }
 }

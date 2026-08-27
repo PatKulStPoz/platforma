@@ -55,6 +55,38 @@
                 </div>
             </div>
         </div>
+        <div class="box" id="buttons">
+            <div>
+                <button type="button" onclick="k = ''; buttonSelect(this, 'wheel_selector')" class="wheel_selector selected" >Oba koła</button>
+                <button type="button" onclick="k = 'l:'; buttonSelect(this, 'wheel_selector')" class="wheel_selector">Lewe koło</button>
+                <button type="button" onclick="k = 'r:'; buttonSelect(this, 'wheel_selector')"  class="wheel_selector">Prawe koło</button>
+            </div>
+            <hr>
+            <div>
+                <button type="button" onclick="sendCommand(`${k}start now`);">Start</button>
+                <button type="button" onclick="sendCommand(`${k}stop now`);">Stop</button>
+                <button type="button" onclick="sendCommand(`${k}setbrake 0`);">Zwolnij hamulce</button>
+                <button type="button" onclick="sendCommand(`${k}setbrake 1`);">Zaciśnij hamulce</button>
+                <button type="button" onclick="sendCommand(`${k}setdir f`);">Przód</button>
+                <button type="button" onclick="sendCommand(`${k}setdir b`);">Tył</button>
+                <button type="button" onclick="sendCommand(`${k}reset`);">Reset</button>
+
+            </div>
+            <div>
+                <button type="button" onclick="sendCommand(`${k}setlevel 0 now`);">Moc silnika 0%</button>
+                <button type="button" onclick="sendCommand(`${k}setlevel 25 now`);">Moc silnika 25%</button>
+                <button type="button" onclick="sendCommand(`${k}setlevel 50 now`);">Moc silnika 50%</button>
+                <button type="button" onclick="sendCommand(`${k}setlevel 75 now`);">Moc silnika 75%</button>
+                <button type="button" onclick="sendCommand(`${k}setlevel 100 now`);">Moc silnika 100%</button>
+            </div>
+            <div>
+                <button type="button" onclick="sendCommand(`${k}rotate 30;${k}waitf`);">Obrót kołem 30°</button>
+                <button type="button" onclick="sendCommand(`${k}rotate 60;${k}waitf`);">Obrót kołem 60°</button>
+                <button type="button" onclick="sendCommand(`${k}rotate 90;${k}waitf`);">Obrót kołem 90°</button>
+                <button type="button" onclick="sendCommand(`${k}rotate 180;${k}waitf`);">Obrót kołem 180°</button>
+                <button type="button" onclick="sendCommand(`${k}rotate 360;${k}waitf`);">Obrót kołem 360°</button>
+            </div>
+        </div>
         <div id="terminal_box">
             <div id="terminal_window"><div id="terminal"></div></div>
             <div id="terminal_send">
@@ -63,10 +95,10 @@
             </div>
         </div>
     </div>
-    <script src="/lib/chart.js"></script>
-
-    <script src="/script.js" type="module"></script>
-
+        <script src="/script.js" type="module"></script>
+    <script>
+        var k = '';
+    </script>
 </body>
 
 </html>
