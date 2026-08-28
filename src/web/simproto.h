@@ -221,6 +221,10 @@ static void tcp_server_task(void *pvParameters) {
                                 continue;
                             }
 
+                            if (c < 32) {
+                                continue;
+                            }
+
                             line[i][index[i]++] = c;
                         }
 

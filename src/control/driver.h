@@ -15,7 +15,7 @@ extern void intrHallMain(void* args);
 extern void intrHallFront(void* args);
 
 
-#define TARGET_VALUE_SHIFT 2
+#define TARGET_VALUE_SHIFT 8
 
 
 enum DriverDirection {
@@ -58,8 +58,8 @@ class Driver {
     int intrCount = 0;
 
     uint8_t value = 0;
-    uint16_t currentVal = 0;
-    uint16_t targetVal = 0;
+    uint32_t currentVal = 0;
+    uint32_t targetVal = 0;
     uint8_t currentActualOutput = 0;
 
     dac_oneshot_handle_t dacHandle;
@@ -348,8 +348,7 @@ class Driver {
                 updateOutputLevel((++this->currentVal) >> TARGET_VALUE_SHIFT);
             }
         } else if (this->currentVal > this->targetVal) {
-            this->currentVal = this->targetVal;
-            updateOutputLevel(this->currentVal >> TARGET_VALUE_SHIFT);
+            updateOutputLevel((--this->currentVal) >> TARGET_VALUE_SHIFT);
         }
     }
 

@@ -4,8 +4,9 @@ Dokumentacja systemu kontroli.
 ## Wspierane połączenie.
 ### UART po USB:
 Platforma wspiera podawanie komend po przez UART po połączeniu USB.
-Dodatkowo na nim wyświetlać mogą sie dodatkowe informacje o stanie platformy.
+Dodatkowo na nim wyświetlać mogą sie dodatkowe informacje o stanie platformy, czy informacje debugowania.
 Odpowiedzi do komend są prefixowane po przez `[CMD] `.
+Komendy są akceptowane po otrzymaniu komunikatu `[CMD] READY!`
 
 ### Serwer WWW pod portem `80`:
 Dostępny jest serwer WWW z prostym interfacem wyświetlającym informacje,
@@ -18,7 +19,7 @@ a otrzymujesz tekst będący odpowiedzą na to.
 
 Można podłączyć się do niego za pomocą clienta Telnet (nie jest to jednak kompatybilny z właściwym protokołem telnet).
 Wysłana sekwencja nowej lini jest równa `\r\n`, a komenda jest wywołana tylko po otrzymaniu znaku `\n`. Inne znaki kontrolne są ignorowane.
-W celu programowym można wykorzystać zwykły socket.
+W celu programowym można wykorzystać zwykły socket dostępny w większości języków programowania.
 
 ## Komendy:
 - `help` - Wbudowany opis komend.
@@ -57,3 +58,5 @@ W celu programowym można wykorzystać zwykły socket.
 
 W celu wybrania koła, należy dodać prefix `l:` dla lewego oraz `r:` dla prawego, przed podaną komendą (np. `l:setbrake true`). 
 Komendy mogą być rozdzielone znakiem `;`, jednak wykonują się tylko po otrzymaniu znaku nowej linii.
+
+Na przykład, wpisanie `setlevel 100; l:rotate 360; waitfor; r:start; wait 10; stop` ustawii poziom mocy na 100%, obróci lewe koło o 360, poczeka aż się obróci, wystartuje prawe, poczeka 10 sekund i się zatrzyma.

@@ -156,7 +156,7 @@ class SyncedRotateBehavior : public RotateBehavior {
         if (this->otherDriver->getBehavior()->type() == BEHAVIOR_ROTATION) {
             RotateBehavior* v = static_cast<RotateBehavior*>(this->otherDriver->getBehavior());
             if (v->rotationTick > 0) {
-                int32_t val = (this->rotationTick - v->rotationTick) * 64 + level;
+                int32_t val = (this->rotationTick - v->rotationTick) * 32 + level;
                 RotateBehavior::setTargetLevel(val > 255 ? 255 : (val < 0 ? 0 : val));
                 return;
             }
@@ -203,7 +203,7 @@ class SyncedForwardBehavior : public DefaultBehavior {
 
     virtual void setTargetLevel(uint8_t level) {
         if (this->otherDriver->getBehavior()->running) {
-            int32_t val = (abs(this->otherDriver->getHallTicks()) - this->otherHallTickTarget) * 64 + level;
+            int32_t val = (abs(this->otherDriver->getHallTicks()) - this->otherHallTickTarget) * 32 + level;
             BaseBehavior::setTargetLevel(val > 255 ? 255 : (val < 0 ? 0 : val));
         } else {
             this->setTargetLevelForce(0);
